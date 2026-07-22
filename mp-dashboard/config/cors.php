@@ -11,6 +11,8 @@ return [
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5173',
         'http://127.0.0.1:8080',
+        'https://mpportal.focuswebmedia.in',
+        'https://www.mpportal.focuswebmedia.in',
         env('FRONTEND_URL', 'http://localhost:3000'),
     ],
     'allowed_origins_patterns' => ['/^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:\d{1,5}$/', '/^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,5}$/'],

@@ -1,0 +1,1 @@
+import{r as e}from"./useRouter-C7pTCAcE.js";import{I as t}from"./proxy-CkGWSmfD.js";import{t as n}from"./PlaceholderPage-C5BN9Mav.js";var r=e(),i=()=>(0,r.jsx)(n,{title:`Communication Hub · Overview`,description:`Broadcast and one-to-one outreach across SMS, WhatsApp and email.`,icon:t,emptyAction:`New Campaign`});export{i as component};

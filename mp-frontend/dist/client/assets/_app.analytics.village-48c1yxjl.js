@@ -1,0 +1,1 @@
+import{r as e}from"./useRouter-C7pTCAcE.js";import{t}from"./map-pin-CLAv9XQJ.js";import{t as n}from"./PlaceholderPage-C5BN9Mav.js";var r=e(),i=()=>(0,r.jsx)(n,{title:`Village Analytics`,description:`Village-level deep dives with booth-grain insight.`,icon:t,emptyAction:`Export`});export{i as component};
