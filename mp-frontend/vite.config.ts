@@ -9,14 +9,6 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 export default defineConfig({
   vite: {
     server: { port: 8080 },
-    build: {
-      // Configure for SPA build (single index.html)
-      rollupOptions: {
-        input: {
-          main: './index.html',
-        },
-      },
-    },
   },
   tanstackStart: {
     // Configure for client-side only rendering (SPA mode)
