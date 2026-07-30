@@ -7,35 +7,35 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class VolunteerAttendance extends Model
+class VolunteerTraining extends Model
 {
     use HasFactory, HasUuids;
 
-    protected $table = 'volunteer_attendance';
-
     protected $fillable = [
         'volunteer_id',
-        'attendance_date',
-        'check_in',
-        'check_out',
+        'training_name',
+        'training_type',
+        'description',
+        'start_date',
+        'end_date',
+        'venue',
+        'trainer',
         'status',
-        'activity_type',
-        'notes',
-        'hours_worked',
-        'location',
-        'latitude',
-        'longitude',
+        'certificate_number',
+        'certificate_issue_date',
+        'topics_covered',
+        'feedback',
+        'score',
+        'grade',
         'created_by',
         'updated_by',
     ];
 
     protected $casts = [
-        'attendance_date' => 'date',
-        'check_in' => 'datetime',
-        'check_out' => 'datetime',
-        'hours_worked' => 'decimal:2',
-        'latitude' => 'decimal:8',
-        'longitude' => 'decimal:8',
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'certificate_issue_date' => 'date',
+        'score' => 'decimal:2',
     ];
 
     public function volunteer()

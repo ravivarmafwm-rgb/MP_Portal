@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { getDashboardPath } from "@/lib/roles";
 import { toast } from "sonner";
+import axios from "axios";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -45,9 +46,21 @@ function LoginPage() {
       toast.success("Welcome back!");
       navigate({ to: getDashboardPath(authUser.role_slug), replace: true });
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "Invalid credentials. Please try again.";
+      let msg = "Unable to sign in. Please try again.";
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        if (!err.response) {
+          msg = "Cannot connect to the API. Check your connection or API configuration.";
+        } else if (status === 401) {
+          msg = "Invalid email or password.";
+        } else if (status === 422) {
+          msg = err.response.data?.message ?? "Please check the submitted details.";
+        } else if (status === 403) {
+          msg = "This account is not authorized to access the portal.";
+        } else if (status && status >= 500) {
+          msg = "The server is temporarily unavailable. Please try again later.";
+        }
+      }
       toast.error(msg);
     }
   };
@@ -170,25 +183,6 @@ function LoginPage() {
               )}
             </Button>
           </form>
-
-          {/* Quick login hints */}
-          <div className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Quick access</p>
-            <div className="space-y-1.5 text-xs text-muted-foreground">
-              <div className="flex justify-between">
-                <span>Super Admin</span>
-                <code className="rounded bg-muted px-1">admin@mpdashboard.com / Admin@1234</code>
-              </div>
-              <div className="flex justify-between">
-                <span>MP</span>
-                <code className="rounded bg-muted px-1">mp@mpdashboard.com / MP@1234</code>
-              </div>
-              <div className="flex justify-between">
-                <span>Volunteer</span>
-                <code className="rounded bg-muted px-1">volunteer@mpdashboard.com / Volunteer@1234</code>
-              </div>
-            </div>
-          </div>
 
           <div className="text-center text-sm">
             Don't have an account?{" "}

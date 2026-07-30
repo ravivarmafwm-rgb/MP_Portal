@@ -11,8 +11,6 @@ class VolunteerAttendance extends Model
 {
     use HasFactory, HasUuids;
 
-    protected $table = 'volunteer_attendance';
-
     protected $fillable = [
         'volunteer_id',
         'attendance_date',

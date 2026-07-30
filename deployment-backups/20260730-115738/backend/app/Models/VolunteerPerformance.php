@@ -11,8 +11,6 @@ class VolunteerPerformance extends Model
 {
     use HasFactory, HasUuids;
 
-    protected $table = 'volunteer_performance';
-
     protected $fillable = [
         'volunteer_id',
         'evaluation_period',

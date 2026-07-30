@@ -78,7 +78,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Surveys
     Route::get('/surveys/stats',    [SurveyController::class, 'stats']);
-    Route::get('/surveys/responses',[SurveyController::class, 'responses']);
     Route::apiResource('surveys',   SurveyController::class)->only(['index', 'show']);
 
     // Documents

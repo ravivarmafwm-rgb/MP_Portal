@@ -18,7 +18,7 @@ class CitizenController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Citizen::query();
+        $query = Citizen::query()->withTrashed(false);
 
         if ($search = $request->get('search')) {
             $query->where(function ($q) use ($search) {

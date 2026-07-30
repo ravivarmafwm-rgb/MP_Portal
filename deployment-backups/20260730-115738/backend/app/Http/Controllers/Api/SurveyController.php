@@ -43,44 +43,6 @@ class SurveyController extends Controller
         return response()->json($survey);
     }
 
-    public function responses(Request $request): JsonResponse
-    {
-        $query = SurveyResponse::with(['survey', 'citizen', 'volunteer', 'village', 'ward']);
-
-        if ($surveyId = $request->get('survey_id')) {
-            $query->where('survey_id', $surveyId);
-        }
-
-        if ($search = $request->get('search')) {
-            $query->where(function ($responseQuery) use ($search) {
-                $responseQuery
-                    ->where('respondent_name', 'ilike', "%{$search}%")
-                    ->orWhere('respondent_mobile', 'ilike', "%{$search}%")
-                    ->orWhereHas('citizen', function ($citizenQuery) use ($search) {
-                        $citizenQuery
-                            ->where('first_name', 'ilike', "%{$search}%")
-                            ->orWhere('last_name', 'ilike', "%{$search}%");
-                    })
-                    ->orWhereHas('village', function ($villageQuery) use ($search) {
-                        $villageQuery->where('name', 'ilike', "%{$search}%");
-                    });
-            });
-        }
-
-        $perPage = min(max((int) $request->get('per_page', 20), 1), 100);
-        $results = $query->orderByDesc('response_date')->orderByDesc('created_at')->paginate($perPage);
-
-        return response()->json([
-            'data' => $results->items(),
-            'meta' => [
-                'total' => $results->total(),
-                'per_page' => $results->perPage(),
-                'current_page' => $results->currentPage(),
-                'last_page' => $results->lastPage(),
-            ],
-        ]);
-    }
-
     public function stats(): JsonResponse
     {
         return response()->json([
