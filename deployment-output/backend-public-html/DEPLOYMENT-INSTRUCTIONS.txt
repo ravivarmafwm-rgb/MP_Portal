@@ -1,0 +1,15 @@
+HOSTINGER BACKEND DEPLOYMENT
+
+1. Upload all contents of this folder directly into the public_html directory for mpportaldashboard.focuswebmedia.in. Do not upload the containing folder itself.
+2. Set the domain PHP version to PHP 8.3 or newer, as required by composer.json.
+3. Enable the pdo_pgsql and pgsql PHP extensions.
+4. Use directory permissions 755 and file permissions 644.
+5. Ensure storage and bootstrap/cache are writable by the PHP process.
+6. The vendor directory is included when it was present locally. If it is not uploaded, run:
+   composer install --no-dev --prefer-dist --optimize-autoloader
+7. After deployment, run:
+   php artisan optimize:clear
+8. Do not run production seeders. Do not run migrations unless separately reviewed and explicitly approved.
+9. Keep .env at the project root and verify production URLs and PostgreSQL SSL configuration without exposing its values publicly.
+
+The root index.php and root .htaccess are already configured for a Laravel project located directly in public_html. Do not redirect requests to /public and do not change the domain document root.

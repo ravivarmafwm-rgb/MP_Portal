@@ -1,0 +1,1 @@
+import{r as e}from"./useRouter-C7pTCAcE.js";import{i as t}from"./nav-config-DR7pTeiu.js";import{t as n}from"./PlaceholderPage-C1S4OJ7E.js";var r=e(),i=()=>(0,r.jsx)(n,{title:`Documents · Overview`,description:`Citizen records and project documentation — searchable and secure.`,icon:t,emptyAction:`Upload`});export{i as component};

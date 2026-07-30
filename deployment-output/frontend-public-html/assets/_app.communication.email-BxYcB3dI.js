@@ -1,0 +1,1 @@
+import{r as e}from"./useRouter-C7pTCAcE.js";import{t}from"./mail-DKTeWmBG.js";import{t as n}from"./PlaceholderPage-C1S4OJ7E.js";var r=e(),i=()=>(0,r.jsx)(n,{title:`Email`,description:`Email newsletters, updates and constituent communication.`,icon:t,emptyAction:`New Email`});export{i as component};
