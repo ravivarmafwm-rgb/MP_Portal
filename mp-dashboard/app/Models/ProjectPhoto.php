@@ -5,11 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProjectPhoto extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'project_id',
@@ -32,6 +33,8 @@ class ProjectPhoto extends Model
         'created_by',
         'updated_by',
     ];
+
+    protected $hidden = ['file_path', 'thumbnail_path'];
 
     protected $casts = [
         'latitude' => 'decimal:8',

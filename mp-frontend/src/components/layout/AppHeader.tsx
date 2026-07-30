@@ -1,4 +1,11 @@
-import { Plus, Search, ChevronDown, User, Settings, LogOut } from "lucide-react";
+import {
+  Plus,
+  Search,
+  ChevronDown,
+  User,
+  Settings,
+  LogOut,
+} from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -90,8 +97,12 @@ export function AppHeader() {
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left leading-tight md:block">
-                <div className="text-xs font-semibold truncate max-w-[120px]">{displayName}</div>
-                <div className="text-[10px] text-muted-foreground">{roleLabel}</div>
+                <div className="text-xs font-semibold truncate max-w-[120px]">
+                  {displayName}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {roleLabel}
+                </div>
               </div>
               <ChevronDown className="hidden h-3.5 w-3.5 text-muted-foreground md:block" />
             </Button>
@@ -99,21 +110,26 @@ export function AppHeader() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="font-semibold truncate">{displayName}</div>
-              <div className="text-xs font-normal text-muted-foreground truncate">{user?.email}</div>
+              <div className="text-xs font-normal text-muted-foreground truncate">
+                {user?.email}
+              </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />Profile
+              <User className="mr-2 h-4 w-4" />
+              Profile
             </DropdownMenuItem>
             <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />Preferences
+              <Settings className="mr-2 h-4 w-4" />
+              Preferences
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               onClick={handleLogout}
             >
-              <LogOut className="mr-2 h-4 w-4" />Sign out
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -16,7 +16,9 @@ export function GeoInsights() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h3 className="text-h3 font-bold">Geographic insights</h3>
-          <p className="text-xs text-muted-foreground">Live activity by mandal & ward</p>
+          <p className="text-xs text-muted-foreground">
+            Live activity by mandal & ward
+          </p>
         </div>
         <Badge variant="secondary" className="gap-1">
           <Layers className="h-3 w-3" /> Grievances · Projects · Beneficiaries
@@ -26,14 +28,28 @@ export function GeoInsights() {
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-border/70 bg-gradient-to-br from-muted/40 via-background to-muted/20">
         <svg className="absolute inset-0 h-full w-full text-border" aria-hidden>
           <defs>
-            <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
-              <path d="M 32 0 L 0 0 0 32" fill="none" stroke="currentColor" strokeWidth="0.5" />
+            <pattern
+              id="grid"
+              width="32"
+              height="32"
+              patternUnits="userSpaceOnUse"
+            >
+              <path
+                d="M 32 0 L 0 0 0 32"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="0.5"
+              />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
 
-        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 400 225" preserveAspectRatio="none">
+        <svg
+          className="absolute inset-0 h-full w-full"
+          viewBox="0 0 400 225"
+          preserveAspectRatio="none"
+        >
           <path
             d="M40 60 Q120 30 200 80 T380 70 L370 180 Q260 200 180 170 T40 190 Z"
             fill="oklch(0.65 0.16 235 / 0.10)"
@@ -54,8 +70,15 @@ export function GeoInsights() {
             className="absolute -translate-x-1/2 -translate-y-1/2"
             style={{ top: h.top, left: h.left }}
           >
-            <span className={"relative flex h-3 w-3 " + h.tone + " rounded-full"}>
-              <span className={"absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 " + h.tone} />
+            <span
+              className={"relative flex h-3 w-3 " + h.tone + " rounded-full"}
+            >
+              <span
+                className={
+                  "absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 " +
+                  h.tone
+                }
+              />
             </span>
             <div className="mt-1 whitespace-nowrap rounded-md bg-background/90 px-2 py-0.5 text-[10px] font-semibold shadow-sm backdrop-blur">
               {h.label} · {h.n}

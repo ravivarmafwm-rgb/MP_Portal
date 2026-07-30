@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\Crypt;
 
 class Citizen extends Model
 {
@@ -24,6 +25,8 @@ class Citizen extends Model
         'date_of_birth',
         'gender',
         'aadhaar_number',
+        'aadhaar_ciphertext',
+        'aadhaar_hash',
         'voter_id',
         'mobile_number',
         'alternate_mobile',
@@ -50,6 +53,29 @@ class Citizen extends Model
         'date_of_birth' => 'date',
         'date_of_death' => 'date',
     ];
+
+    protected $hidden = ['aadhaar_number', 'aadhaar_ciphertext', 'aadhaar_hash', 'biometric_data'];
+    protected $appends = ['aadhaar_masked'];
+
+    public function setAadhaarNumberAttribute(?string $value): void
+    {
+        $digits = preg_replace('/\D/', '', (string) $value);
+        $this->attributes['aadhaar_number'] = null;
+        $this->attributes['aadhaar_ciphertext'] = $digits !== '' ? Crypt::encryptString($digits) : null;
+        $this->attributes['aadhaar_hash'] = $digits !== '' ? hash_hmac('sha256', $digits, config('app.key')) : null;
+    }
+
+    public function getAadhaarNumberAttribute(): ?string
+    {
+        $ciphertext = $this->attributes['aadhaar_ciphertext'] ?? null;
+        return $ciphertext ? Crypt::decryptString($ciphertext) : null;
+    }
+
+    public function getAadhaarMaskedAttribute(): ?string
+    {
+        $aadhaar = $this->aadhaar_number;
+        return $aadhaar ? 'XXXX XXXX '.substr($aadhaar, -4) : null;
+    }
 
     public function familyMembers()
     {
@@ -94,6 +120,11 @@ class Citizen extends Model
     public function documents()
     {
         return $this->morphMany(Document::class, 'documentable');
+    }
+
+    public function activityLogs()
+    {
+        return $this->morphMany(ActivityLog::class, 'loggable');
     }
 
     public function createdBy()

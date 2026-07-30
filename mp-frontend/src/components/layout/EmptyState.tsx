@@ -26,8 +26,12 @@ export function EmptyState({
       <div className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary ring-8 ring-primary/5">
         <Icon className="h-6 w-6" />
       </div>
-      <h3 className="mt-5 font-display text-lg font-semibold text-foreground">{title}</h3>
-      <p className="mt-1.5 max-w-md text-sm text-muted-foreground">{description}</p>
+      <h3 className="mt-5 font-display text-lg font-semibold text-foreground">
+        {title}
+      </h3>
+      <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
+        {description}
+      </p>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
         {actionLabel && <Button size="sm">{actionLabel}</Button>}
         {secondaryAction}

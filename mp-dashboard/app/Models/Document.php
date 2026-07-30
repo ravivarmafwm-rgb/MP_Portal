@@ -22,6 +22,8 @@ class Document extends Model
         'description',
         'file_name',
         'file_path',
+        'storage_disk',
+        'checksum_sha256',
         'file_size',
         'file_type',
         'mime_type',
@@ -44,6 +46,8 @@ class Document extends Model
         'is_verified' => 'boolean',
         'verified_date' => 'date',
     ];
+
+    protected $hidden = ['file_path', 'storage_disk', 'checksum_sha256'];
 
     public function documentCategory()
     {

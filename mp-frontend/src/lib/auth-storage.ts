@@ -7,7 +7,10 @@ export interface StoredAuthUser {
   initials: string;
 }
 
-export function getStoredAuth(): { token: string | null; user: StoredAuthUser | null } {
+export function getStoredAuth(): {
+  token: string | null;
+  user: StoredAuthUser | null;
+} {
   if (typeof window === "undefined") return { token: null, user: null };
   try {
     const token = localStorage.getItem("mp_token");

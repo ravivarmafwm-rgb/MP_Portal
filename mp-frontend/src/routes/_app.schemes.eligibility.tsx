@@ -1,119 +1,113 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import { Sparkles, BadgeCheck, AlertTriangle, XCircle, FileWarning } from "lucide-react";
+import { AlertCircle, BadgeCheck, FileWarning } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { eligibilityMatrix, aiSchemeAdvisor } from "@/lib/scheme-data";
-import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { fetchSchemeEligibilityRules } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/schemes/eligibility")({
-  head: () => ({ meta: [{ title: "Eligibility Engine — Scheme Management" }, { name: "description", content: "AI-powered citizen eligibility matrix across welfare schemes." }] }),
   component: EligibilityPage,
 });
 
-const cellTone: Record<string, string> = {
-  Eligible: "bg-success/10 text-success",
-  Enrolled: "bg-primary/10 text-primary",
-  "Docs Missing": "bg-warning/15 text-warning",
-  "Not Eligible": "bg-muted text-muted-foreground",
-};
-const cellIcon: Record<string, any> = {
-  Eligible: BadgeCheck, Enrolled: BadgeCheck,
-  "Docs Missing": FileWarning, "Not Eligible": XCircle,
-};
-
-const columns = [
-  { key: "pmay", label: "PMAY", icon: "🏠" },
-  { key: "pmKisan", label: "PM-Kisan", icon: "🌾" },
-  { key: "ayushman", label: "Ayushman", icon: "🏥" },
-  { key: "scholarship", label: "Scholarship", icon: "🎓" },
-  { key: "pension", label: "Pension", icon: "👴" },
-] as const;
-
-const summary = [
-  { l: "Eligible (not enrolled)", v: 1284, icon: BadgeCheck, tone: "bg-success/10 text-success" },
-  { l: "Already Enrolled", v: 18420, icon: BadgeCheck, tone: "bg-primary/10 text-primary" },
-  { l: "Documents Missing", v: 642, icon: FileWarning, tone: "bg-warning/15 text-warning" },
-  { l: "Verification Needed", v: 412, icon: AlertTriangle, tone: "bg-info/10 text-info" },
-];
-
 function EligibilityPage() {
+  const query = useQuery({
+    queryKey: ["scheme-eligibility-rules"],
+    queryFn: fetchSchemeEligibilityRules,
+  });
+  if (query.isLoading)
+    return (
+      <div className="space-y-3 p-8">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-32" />
+        ))}
+      </div>
+    );
+  if (query.isError)
+    return (
+      <div className="grid min-h-[50vh] place-items-center text-center text-muted-foreground">
+        <div>
+          <AlertCircle className="mx-auto mb-3 h-8 w-8" />
+          Eligibility rules could not be loaded.
+        </div>
+      </div>
+    );
+  const schemes = query.data!.data;
   return (
     <>
       <PageHeader
-        title="Eligibility Engine"
-        description="AI-assisted matching of citizens to schemes they qualify for."
-        actions={<Button size="sm" className="gap-1.5"><Sparkles className="h-4 w-4" /> Run Eligibility Scan</Button>}
+        title="Scheme Eligibility Rules"
+        description="Authoritative eligibility criteria configured for active schemes. No automated citizen decision is shown unless supported by recorded rules and verified citizen data."
       />
-      <div className="space-y-6 p-4 md:p-8">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {summary.map((s, i) => (
-            <motion.div key={s.l} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <Card className="p-4">
-                <div className={cn("inline-grid h-9 w-9 place-items-center rounded-lg", s.tone)}><s.icon className="h-4 w-4" /></div>
-                <div className="mt-3 text-[11px] uppercase tracking-wider text-muted-foreground">{s.l}</div>
-                <div className="mt-1 font-display text-xl font-bold tabular-nums">{s.v.toLocaleString()}</div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        <Card className="overflow-hidden p-0">
-          <div className="border-b border-border/70 p-4">
-            <h3 className="font-display text-base font-bold">Citizen Eligibility Matrix</h3>
-            <p className="text-xs text-muted-foreground">Live scoring · {eligibilityMatrix.length} citizens shown · {eligibilityMatrix.length * 5} eligibility checks</p>
+      <div className="space-y-4 p-4 md:p-8">
+        {schemes.length === 0 && (
+          <div className="py-16 text-center text-sm text-muted-foreground">
+            No active schemes are configured.
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="p-3 text-left">Citizen</th>
-                  <th className="p-3 text-left">Village</th>
-                  {columns.map((c) => (
-                    <th key={c.key} className="p-3 text-left whitespace-nowrap">{c.icon} {c.label}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {eligibilityMatrix.map((row) => (
-                  <tr key={row.citizenId} className="border-t border-border/40 hover:bg-muted/30">
-                    <td className="p-3"><div className="font-medium">{row.citizen}</div><div className="text-[10px] text-muted-foreground">{row.citizenId}</div></td>
-                    <td className="p-3 text-xs">{row.village}</td>
-                    {columns.map((c) => {
-                      const v = row[c.key];
-                      const Icon = cellIcon[v];
-                      return (
-                        <td key={c.key} className="p-3">
-                          <Badge variant="secondary" className={cn("text-[10px]", cellTone[v])}>
-                            <Icon className="mr-0.5 inline h-3 w-3" />{v}
-                          </Badge>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background p-5">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <h3 className="font-display text-base font-bold">AI Eligibility Recommendations</h3>
-            <Badge variant="secondary" className="bg-primary/10 text-[10px] text-primary">Preview</Badge>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {aiSchemeAdvisor.map((s, i) => (
-              <div key={i} className="rounded-lg border border-border/70 bg-card/50 p-3">
-                <div className="text-xs font-semibold text-primary">"{s.q}"</div>
-                <p className="mt-1 text-xs text-muted-foreground">→ {s.a}</p>
+        )}
+        {schemes.map((scheme) => (
+          <Card key={scheme.id} className="p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">{scheme.name}</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {scheme.code} ·{" "}
+                  {scheme.department?.name ?? "Department not assigned"}
+                </p>
               </div>
-            ))}
-          </div>
-        </Card>
+              <Badge variant="secondary">
+                {scheme.eligibility_rules?.length ?? 0} structured rules
+              </Badge>
+            </div>
+            {scheme.eligibility && (
+              <div className="mt-4 rounded-md bg-muted/40 p-3 text-sm">
+                <div className="mb-1 font-medium">Published eligibility</div>
+                <p className="whitespace-pre-wrap text-muted-foreground">
+                  {scheme.eligibility}
+                </p>
+              </div>
+            )}
+            {(scheme.eligibility_rules?.length ?? 0) > 0 ? (
+              <div className="mt-4 divide-y rounded-md border">
+                {scheme.eligibility_rules!.map((rule) => (
+                  <div key={rule.id} className="flex gap-3 p-3">
+                    <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{rule.rule_name}</span>
+                        {rule.is_mandatory && (
+                          <Badge variant="destructive" className="text-[10px]">
+                            Mandatory
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {rule.condition ||
+                          [rule.field_name, rule.operator, rule.value]
+                            .filter(Boolean)
+                            .join(" ") ||
+                          "Rule details have not been recorded."}
+                      </p>
+                      {rule.error_message && (
+                        <p className="mt-1 text-xs text-destructive">
+                          {rule.error_message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              !scheme.eligibility && (
+                <div className="mt-4 flex gap-2 rounded-md border border-warning/30 bg-warning/5 p-3 text-sm text-muted-foreground">
+                  <FileWarning className="h-4 w-4 shrink-0 text-warning" />
+                  No eligibility criteria have been configured for this scheme.
+                </div>
+              )
+            )}
+          </Card>
+        ))}
       </div>
     </>
   );

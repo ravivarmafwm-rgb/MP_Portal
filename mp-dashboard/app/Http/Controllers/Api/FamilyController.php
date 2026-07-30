@@ -7,12 +7,15 @@ use App\Models\Family;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use App\Services\GeographicScopeService;
 
 class FamilyController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Family::with(['village', 'familyMembers.citizen']);
+        $query = Family::with(['village.mandal', 'familyMembers.citizen'])
+            ->withSum('schemeBeneficiaries as total_benefits_received', 'total_benefit_received');
+        app(GeographicScopeService::class)->apply($query, $request->user());
 
         if ($search = $request->get('search')) {
             $query->where(function ($q) use ($search) {

@@ -32,7 +32,11 @@ export function PlaceholderPage({
   emptyDescription?: string;
   emptyAction?: string;
   tabs?: string[];
-  stats?: { label: string; value: string; tone?: "default" | "success" | "warning" | "info" }[];
+  stats?: {
+    label: string;
+    value: string;
+    tone?: "default" | "success" | "warning" | "info";
+  }[];
 }) {
   const defaultStats = stats ?? [
     { label: "Total Records", value: "—" },
@@ -71,7 +75,9 @@ export function PlaceholderPage({
                 {s.label}
               </div>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="font-display text-2xl font-bold tracking-tight">{s.value}</span>
+                <span className="font-display text-2xl font-bold tracking-tight">
+                  {s.value}
+                </span>
                 {s.tone && s.tone !== "default" && (
                   <Badge
                     variant="secondary"
@@ -83,7 +89,11 @@ export function PlaceholderPage({
                           : "bg-info/10 text-info"
                     }
                   >
-                    {s.tone === "warning" ? "Action" : s.tone === "success" ? "OK" : "Live"}
+                    {s.tone === "warning"
+                      ? "Action"
+                      : s.tone === "success"
+                        ? "OK"
+                        : "Live"}
                   </Badge>
                 )}
               </div>
@@ -107,7 +117,10 @@ export function PlaceholderPage({
           <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-muted/30 p-3">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder={`Search ${title.toLowerCase()}…`} className="h-9 pl-9 bg-background" />
+              <Input
+                placeholder={`Search ${title.toLowerCase()}…`}
+                className="h-9 pl-9 bg-background"
+              />
             </div>
             <Button variant="outline" size="sm" className="gap-1.5">
               <Filter className="h-4 w-4" /> Filters

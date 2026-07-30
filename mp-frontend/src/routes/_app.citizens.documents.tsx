@@ -1,78 +1,66 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { FileText, Upload, Filter, ScanLine } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { z } from "zod";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { StatCard } from "@/components/layout/StatCard";
-import { DocumentCard } from "@/components/citizens/DocumentCard";
-import { documentsByCitizen } from "@/lib/citizen-data";
-
-const allDocs = documentsByCitizen["CTZ-100245"];
-const filters = ["All", "Aadhaar", "Voter ID", "Income Certificate", "Caste Certificate", "Land Records", "Ration Card", "PAN"] as const;
-
+import { Button } from "@/components/ui/button";
+import { fetchCitizen, type CitizenDetailRecord } from "@/lib/api";
 export const Route = createFileRoute("/_app/citizens/documents")({
-  head: () => ({
-    meta: [
-      { title: "Document Center — MP Constituency Platform" },
-      { name: "description", content: "Citizen document repository with previews, OCR and verification." },
-    ],
-  }),
-  component: DocumentCenterPage,
+  validateSearch: z.object({ id: z.string().optional() }),
+  loaderDeps: ({ search }) => ({ id: search.id }),
+  loader: ({ deps }) => (deps.id ? fetchCitizen(deps.id) : null),
+  component: Page,
 });
-
-function DocumentCenterPage() {
-  const [filter, setFilter] = useState<(typeof filters)[number]>("All");
-  const [q, setQ] = useState("");
-  const filtered = useMemo(() => {
-    return allDocs.filter((d) => {
-      const matchFilter = filter === "All" || d.type === filter;
-      const matchQ = !q || d.number.toLowerCase().includes(q.toLowerCase()) || d.type.toLowerCase().includes(q.toLowerCase());
-      return matchFilter && matchQ;
-    });
-  }, [filter, q]);
-
+function Page() {
+  const citizen = Route.useLoaderData();
   return (
     <>
       <PageHeader
-        title="Document Center"
-        description="Unified document repository with previews, OCR and version history."
-        actions={
-          <Button size="sm" className="gap-1.5">
-            <Upload className="h-4 w-4" /> Upload Document
-          </Button>
-        }
+        title="Citizen Documents"
+        description="Secure documents associated with the selected citizen."
       />
-      <div className="space-y-6 p-4 md:p-8">
-        <div className="grid gap-4 md:grid-cols-3">
-          <StatCard label="Documents on File" value="48,902" icon={FileText} index={0} delta="+3.1%" />
-          <StatCard label="OCR Extracted" value="42,180" icon={ScanLine} index={1} delta="+4.8%" hint="Auto-indexed" />
-          <StatCard label="Pending Verification" value="1,204" icon={Filter} index={2} delta="-1.2%" trend="down" />
-        </div>
-
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex flex-wrap items-center gap-3">
-          <Input placeholder="Search documents…" value={q} onChange={(e) => setQ(e.target.value)} className="h-9 max-w-xs" />
-          <div className="flex flex-wrap gap-1.5">
-            {filters.map((f) => (
-              <Badge
-                key={f}
-                variant={filter === f ? "default" : "outline"}
-                className="cursor-pointer"
-                onClick={() => setFilter(f)}
-              >
-                {f}
-              </Badge>
-            ))}
-          </div>
-        </motion.div>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {filtered.map((d, i) => (
-            <DocumentCard key={d.id} doc={d} index={i} />
-          ))}
-        </div>
+      <div className="space-y-3 p-4 md:p-8">
+        {!citizen ? (
+          <Card className="p-6 text-center">
+            <p className="text-muted-foreground">
+              Select a citizen from the directory to view documents.
+            </p>
+            <Button asChild className="mt-4">
+              <Link to="/citizens/list">Open citizen directory</Link>
+            </Button>
+          </Card>
+        ) : (
+          <>
+            <Card className="p-4 text-sm">
+              {citizen.first_name} {citizen.last_name} · {citizen.unique_id}
+            </Card>
+            {citizen.documents.length === 0 ? (
+              <Card className="p-8 text-center text-muted-foreground">
+                No documents recorded.
+              </Card>
+            ) : (
+              citizen.documents.map(
+                (row: CitizenDetailRecord["documents"][number]) => (
+                  <Card
+                    key={row.id}
+                    className="flex items-center justify-between gap-4 p-4"
+                  >
+                    <div>
+                      <strong>{row.title}</strong>
+                      <p className="text-xs text-muted-foreground">
+                        {row.original_name} ·{" "}
+                        {new Date(row.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Badge variant="outline">
+                      {row.category?.name ?? row.mime_type}
+                    </Badge>
+                  </Card>
+                ),
+              )
+            )}
+          </>
+        )}
       </div>
     </>
   );

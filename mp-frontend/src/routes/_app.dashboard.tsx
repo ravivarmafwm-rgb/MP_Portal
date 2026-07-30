@@ -6,7 +6,11 @@ export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({
     meta: [
       { title: "Command Center — MP Constituency Platform" },
-      { name: "description", content: "Live mission-control view of citizens, grievances, projects, schemes, volunteers and survey insights." },
+      {
+        name: "description",
+        content:
+          "Live mission-control view of citizens, grievances, projects, schemes, volunteers and survey insights.",
+      },
     ],
   }),
   component: DashboardPage,

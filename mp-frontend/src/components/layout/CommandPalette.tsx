@@ -25,7 +25,11 @@ const quickRecords = [
   { label: "Search citizens", icon: Users, to: "/citizens/list" },
   { label: "Search volunteers", icon: HeartHandshake, to: "/volunteers/list" },
   { label: "Search projects", icon: HardHat, to: "/projects/mplads" },
-  { label: "Search grievances", icon: MessageSquareWarning, to: "/grievances/open" },
+  {
+    label: "Search grievances",
+    icon: MessageSquareWarning,
+    to: "/grievances/open",
+  },
   { label: "Search schemes", icon: FileBadge, to: "/schemes/applications" },
 ] as const;
 

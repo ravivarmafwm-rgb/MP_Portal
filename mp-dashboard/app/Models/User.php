@@ -14,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'role_id', 'created_by', 'updated_by'])]
+#[Fillable(['name', 'email', 'password', 'role_id', 'constituency_id', 'assembly_constituency_id', 'mandal_id', 'village_id', 'ward_id', 'department_id', 'is_active', 'created_by', 'updated_by'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -32,6 +32,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 
@@ -50,11 +51,6 @@ class User extends Authenticatable
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    public function permissions()
-    {
-        return $this->hasManyThrough(Permission::class, Role::class);
-    }
-
     public function volunteerProfile(): HasOne
     {
         return $this->hasOne(Volunteer::class);
@@ -65,5 +61,11 @@ class User extends Authenticatable
         $roles = (array) $roles;
 
         return $this->role && in_array($this->role->slug, $roles, true);
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->hasRole('super-admin')) return true;
+        return $this->role?->permissions()->where('slug', $permission)->exists() ?? false;
     }
 }

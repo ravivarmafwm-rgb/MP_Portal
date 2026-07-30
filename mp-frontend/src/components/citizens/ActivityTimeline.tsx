@@ -1,6 +1,14 @@
 import { motion } from "framer-motion";
-import { CalendarDays, FileBadge, FileText, MessageSquareWarning, UserPlus, ClipboardList, Users } from "lucide-react";
-import type { ActivityEvent } from "@/lib/citizen-data";
+import {
+  CalendarDays,
+  FileBadge,
+  FileText,
+  MessageSquareWarning,
+  UserPlus,
+  ClipboardList,
+  Users,
+} from "lucide-react";
+import type { ActivityEvent } from "@/lib/citizen-types";
 
 const iconMap = {
   register: UserPlus,
@@ -32,7 +40,9 @@ export function ActivityTimeline({ events }: { events: ActivityEvent[] }) {
               <h4 className="text-sm font-semibold">{e.title}</h4>
               <time className="text-xs text-muted-foreground">{e.date}</time>
             </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">{e.description}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {e.description}
+            </p>
           </motion.li>
         );
       })}

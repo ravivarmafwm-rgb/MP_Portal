@@ -1,6 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CalendarPlus, FileBadge, FilePlus2, MessageSquareWarning, ClipboardList, FolderOpen } from "lucide-react";
+import {
+  CalendarPlus,
+  FileBadge,
+  FilePlus2,
+  MessageSquareWarning,
+  ClipboardList,
+  FolderOpen,
+} from "lucide-react";
 
 const actions = [
   { label: "Add Complaint", icon: MessageSquareWarning },

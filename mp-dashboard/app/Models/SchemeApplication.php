@@ -98,4 +98,14 @@ class SchemeApplication extends Model
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+
+    public function documents()
+    {
+        return $this->morphMany(Document::class, 'documentable');
+    }
+
+    public function activityLogs()
+    {
+        return $this->morphMany(ActivityLog::class, 'loggable');
+    }
 }

@@ -1,79 +1,143 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
-import { Search, Building2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { AlertCircle, Building2, Search } from "lucide-react";
+import { useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { schemes, type SchemeCategory } from "@/lib/scheme-data";
-import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { fetchSchemes } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/schemes/scheme-catalog")({
-  head: () => ({ meta: [{ title: "Scheme Catalog — Welfare Programs" }, { name: "description", content: "Explore all government welfare schemes available to constituents." }] }),
+  head: () => ({ meta: [{ title: "Scheme Catalog" }] }),
   component: SchemeCatalog,
 });
 
-const categories: ("All" | SchemeCategory)[] = ["All","Housing","Agriculture","Health","Education","Women Welfare","Youth Welfare","Senior Citizens","Employment","Social Security"];
-
 function SchemeCatalog() {
-  const [cat, setCat] = useState<"All" | SchemeCategory>("All");
-  const [q, setQ] = useState("");
-  const rows = useMemo(() => schemes.filter((s) => {
-    return (cat === "All" || s.category === cat) && (q === "" || `${s.name} ${s.shortCode} ${s.department}`.toLowerCase().includes(q.toLowerCase()));
-  }), [cat, q]);
-
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const query = useQuery({
+    queryKey: ["schemes", search, page],
+    queryFn: () => fetchSchemes({ search, page, per_page: 12 }),
+  });
   return (
     <>
-      <PageHeader title="Scheme Catalog" description="12 active welfare schemes across 9 categories — explore eligibility, benefits and impact." />
-      <div className="space-y-6 p-4 md:p-8">
+      <PageHeader
+        title="Scheme Catalog"
+        description="Government schemes currently recorded for this constituency."
+      />
+      <div className="space-y-5 p-4 md:p-8">
         <Card className="p-4">
-          <div className="flex flex-wrap gap-3">
-            <div className="relative min-w-[240px] flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search schemes…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-8" />
-            </div>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {categories.map((c) => (
-              <button key={c} onClick={() => setCat(c)} className={cn("rounded-full border px-3 py-1 text-xs font-medium transition", cat === c ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted/60")}>{c}</button>
-            ))}
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              className="pl-9"
+              placeholder="Search by scheme name or code"
+            />
           </div>
         </Card>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {rows.map((s, i) => (
-            <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-              <Card className="flex h-full flex-col p-5 transition-all hover:shadow-lg">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 text-2xl">{s.icon}</div>
-                    <div>
-                      <h3 className="font-display text-base font-bold">{s.name}</h3>
-                      <div className="text-[10px] font-mono uppercase text-muted-foreground">{s.shortCode}</div>
-                    </div>
+        {query.isLoading && (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-64" />
+            ))}
+          </div>
+        )}
+        {query.isError && (
+          <div className="py-16 text-center text-muted-foreground">
+            <AlertCircle className="mx-auto mb-3 h-8 w-8" />
+            Schemes could not be loaded. Please retry.
+          </div>
+        )}
+        {query.data && query.data.data.length === 0 && (
+          <div className="py-16 text-center text-sm text-muted-foreground">
+            No schemes match the current search.
+          </div>
+        )}
+        {query.data && (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {query.data.data.map((scheme) => (
+              <Card key={scheme.id} className="flex flex-col p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="font-semibold">{scheme.name}</h2>
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">
+                      {scheme.code}
+                    </p>
                   </div>
-                  <Badge variant="secondary" className={cn(s.trend === "up" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
-                    {s.growthPct > 0 ? "+" : ""}{s.growthPct}%
+                  <Badge variant={scheme.is_active ? "default" : "secondary"}>
+                    {scheme.is_active ? "Active" : "Inactive"}
                   </Badge>
                 </div>
-                <p className="mt-3 text-xs text-muted-foreground">{s.description}</p>
-                <div className="mt-4 space-y-2 text-xs">
-                  <div className="flex justify-between border-b border-border/40 pb-1.5"><span className="text-muted-foreground">Category</span><span className="font-semibold">{s.category}</span></div>
-                  <div className="flex justify-between border-b border-border/40 pb-1.5"><span className="text-muted-foreground">Eligibility</span><span className="text-right font-semibold">{s.eligibility}</span></div>
-                  <div className="flex justify-between border-b border-border/40 pb-1.5"><span className="text-muted-foreground">Benefit</span><span className="font-semibold text-success">{s.benefit}</span></div>
-                  <div className="flex justify-between border-b border-border/40 pb-1.5"><span className="text-muted-foreground inline-flex items-center gap-1"><Building2 className="h-3 w-3" /> Department</span><span className="font-semibold">{s.department}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Applications</span><span className="font-semibold tabular-nums">{s.applications.toLocaleString()}</span></div>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button asChild variant="outline" size="sm" className="flex-1"><Link to="/schemes/applications">Applications</Link></Button>
-                  <Button asChild size="sm" className="flex-1"><Link to="/schemes/application-detail">Apply</Link></Button>
-                </div>
+                <p className="mt-4 line-clamp-3 text-sm text-muted-foreground">
+                  {scheme.description || "No description has been recorded."}
+                </p>
+                <dl className="mt-5 space-y-2 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <dt>Category</dt>
+                    <dd className="font-medium">{scheme.category}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="flex items-center gap-1">
+                      <Building2 className="h-3.5 w-3.5" /> Department
+                    </dt>
+                    <dd className="text-right font-medium">
+                      {scheme.department?.name ?? "Not assigned"}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt>Applications</dt>
+                    <dd className="font-medium">
+                      {scheme.applications_count ?? 0}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt>Beneficiaries</dt>
+                    <dd className="font-medium">
+                      {scheme.beneficiaries_count ?? 0}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt>Application mode</dt>
+                    <dd className="capitalize font-medium">
+                      {scheme.application_mode}
+                    </dd>
+                  </div>
+                </dl>
               </Card>
-            </motion.div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+        {query.data && query.data.meta.last_page > 1 && (
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              Page {query.data.meta.current_page} of {query.data.meta.last_page}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                disabled={page <= 1}
+                onClick={() => setPage((value) => value - 1)}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                disabled={page >= query.data.meta.last_page}
+                onClick={() => setPage((value) => value + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

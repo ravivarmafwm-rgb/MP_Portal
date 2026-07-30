@@ -2,10 +2,22 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, FileText, ShieldCheck, ShieldAlert } from "lucide-react";
-import type { DocumentRecord } from "@/lib/citizen-data";
+import {
+  Download,
+  Eye,
+  FileText,
+  ShieldCheck,
+  ShieldAlert,
+} from "lucide-react";
+import type { DocumentRecord } from "@/lib/citizen-types";
 
-export function DocumentCard({ doc, index = 0 }: { doc: DocumentRecord; index?: number }) {
+export function DocumentCard({
+  doc,
+  index = 0,
+}: {
+  doc: DocumentRecord;
+  index?: number;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -19,11 +31,13 @@ export function DocumentCard({ doc, index = 0 }: { doc: DocumentRecord; index?: 
           </div>
           {doc.verified ? (
             <Badge variant="outline" className="border-success/40 text-success">
-              <ShieldCheck className="mr-1 h-3 w-3" />Verified
+              <ShieldCheck className="mr-1 h-3 w-3" />
+              Verified
             </Badge>
           ) : (
             <Badge variant="outline" className="border-warning/40 text-warning">
-              <ShieldAlert className="mr-1 h-3 w-3" />Unverified
+              <ShieldAlert className="mr-1 h-3 w-3" />
+              Unverified
             </Badge>
           )}
         </div>
@@ -41,7 +55,8 @@ export function DocumentCard({ doc, index = 0 }: { doc: DocumentRecord; index?: 
         </div>
         <div className="mt-auto flex gap-1.5 pt-4">
           <Button size="sm" variant="outline" className="flex-1 gap-1.5">
-            <Eye className="h-3.5 w-3.5" />Preview
+            <Eye className="h-3.5 w-3.5" />
+            Preview
           </Button>
           <Button size="sm" variant="ghost" className="px-2">
             <Download className="h-3.5 w-3.5" />

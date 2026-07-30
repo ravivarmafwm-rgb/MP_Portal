@@ -2,8 +2,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  ClipboardList, UserPlus, MessageSquareWarning, MapPin,
-  Users, Bell, CheckCircle2, Calendar,
+  ClipboardList,
+  UserPlus,
+  MessageSquareWarning,
+  MapPin,
+  Users,
+  Bell,
+  CheckCircle2,
+  Calendar,
 } from "lucide-react";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -33,10 +39,16 @@ function VolunteerDashboardPage() {
     <RoleGuard route="/volunteer">
       <PageHeader
         title="Volunteer Field Dashboard"
-        description={stats?.assigned_village ? `Assigned: ${stats.assigned_village}, ${stats.assigned_mandal}` : "Your assigned field operations"}
+        description={
+          stats?.assigned_village
+            ? `Assigned: ${stats.assigned_village}, ${stats.assigned_mandal}`
+            : "Your assigned field operations"
+        }
         actions={
           <Button size="sm" asChild>
-            <Link to="/citizens/create-profile"><UserPlus className="h-4 w-4 mr-1.5" /> Enroll Citizen</Link>
+            <Link to="/citizens/create-profile">
+              <UserPlus className="h-4 w-4 mr-1.5" /> Enroll Citizen
+            </Link>
           </Button>
         }
       />
@@ -48,10 +60,15 @@ function VolunteerDashboardPage() {
         >
           <p className="text-sm text-muted-foreground">{stats?.date_label}</p>
           <h1 className="mt-1 text-2xl font-bold">
-            Good day, <span className="text-primary">{stats?.volunteer_name ?? "Volunteer"}</span>
+            Good day,{" "}
+            <span className="text-primary">
+              {stats?.volunteer_name ?? "Volunteer"}
+            </span>
           </h1>
           {stats?.volunteer_id && (
-            <p className="mt-1 text-sm text-muted-foreground">ID: {stats.volunteer_id}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              ID: {stats.volunteer_id}
+            </p>
           )}
         </motion.section>
 
@@ -63,14 +80,62 @@ function VolunteerDashboardPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard label="My Tasks" value={kpis.my_tasks ?? 0} icon={ClipboardList} tone="warning" index={0} />
-            <KpiCard label="My Citizens" value={kpis.assigned_citizens ?? 0} icon={Users} tone="primary" index={1} />
-            <KpiCard label="Registrations Today" value={kpis.registrations_today ?? 0} icon={UserPlus} tone="success" index={2} />
-            <KpiCard label="Complaints Today" value={kpis.complaints_today ?? 0} icon={MessageSquareWarning} tone="destructive" index={3} />
-            <KpiCard label="Village Citizens" value={kpis.village_citizens ?? 0} icon={MapPin} tone="info" index={4} />
-            <KpiCard label="Surveys Done" value={kpis.surveys_completed ?? 0} icon={CheckCircle2} tone="success" index={5} />
-            <KpiCard label="Attendance (Month)" value={kpis.attendance_this_month ?? 0} icon={Calendar} tone="primary" index={6} />
-            <KpiCard label="Notifications" value={kpis.unread_notifications ?? 0} icon={Bell} tone="warning" index={7} />
+            <KpiCard
+              label="My Tasks"
+              value={kpis.my_tasks ?? 0}
+              icon={ClipboardList}
+              tone="warning"
+              index={0}
+            />
+            <KpiCard
+              label="My Citizens"
+              value={kpis.assigned_citizens ?? 0}
+              icon={Users}
+              tone="primary"
+              index={1}
+            />
+            <KpiCard
+              label="Registrations Today"
+              value={kpis.registrations_today ?? 0}
+              icon={UserPlus}
+              tone="success"
+              index={2}
+            />
+            <KpiCard
+              label="Complaints Today"
+              value={kpis.complaints_today ?? 0}
+              icon={MessageSquareWarning}
+              tone="destructive"
+              index={3}
+            />
+            <KpiCard
+              label="Village Citizens"
+              value={kpis.village_citizens ?? 0}
+              icon={MapPin}
+              tone="info"
+              index={4}
+            />
+            <KpiCard
+              label="Surveys Done"
+              value={kpis.surveys_completed ?? 0}
+              icon={CheckCircle2}
+              tone="success"
+              index={5}
+            />
+            <KpiCard
+              label="Attendance (Month)"
+              value={kpis.attendance_this_month ?? 0}
+              icon={Calendar}
+              tone="primary"
+              index={6}
+            />
+            <KpiCard
+              label="Notifications"
+              value={kpis.unread_notifications ?? 0}
+              icon={Bell}
+              tone="warning"
+              index={7}
+            />
           </div>
         )}
 
@@ -79,17 +144,36 @@ function VolunteerDashboardPage() {
             <h3 className="font-bold mb-4">My Assigned Citizens</h3>
             <div className="space-y-2">
               {(stats?.assigned_citizens ?? []).length === 0 ? (
-                <p className="text-sm text-muted-foreground">No citizens enrolled yet.</p>
+                <p className="text-sm text-muted-foreground">
+                  No citizens enrolled yet.
+                </p>
               ) : (
-                stats.assigned_citizens.map((c: { id: string; unique_id: string; first_name: string; last_name: string; mobile_number?: string }) => (
-                  <div key={c.id} className="flex justify-between rounded-lg border p-3 text-sm">
-                    <div>
-                      <div className="font-medium">{c.first_name} {c.last_name}</div>
-                      <div className="text-xs text-muted-foreground">{c.unique_id}</div>
+                stats.assigned_citizens.map(
+                  (c: {
+                    id: string;
+                    unique_id: string;
+                    first_name: string;
+                    last_name: string;
+                    mobile_number?: string;
+                  }) => (
+                    <div
+                      key={c.id}
+                      className="flex justify-between rounded-lg border p-3 text-sm"
+                    >
+                      <div>
+                        <div className="font-medium">
+                          {c.first_name} {c.last_name}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {c.unique_id}
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {c.mobile_number ?? "—"}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{c.mobile_number ?? "—"}</span>
-                  </div>
-                ))
+                  ),
+                )
               )}
             </div>
           </Card>
@@ -98,27 +182,49 @@ function VolunteerDashboardPage() {
             <h3 className="font-bold mb-4">Recent Complaints</h3>
             <div className="space-y-2">
               {(stats?.recent_complaints ?? []).length === 0 ? (
-                <p className="text-sm text-muted-foreground">No complaints filed.</p>
+                <p className="text-sm text-muted-foreground">
+                  No complaints filed.
+                </p>
               ) : (
-                stats.recent_complaints.map((g: { id: string; grievance_number: string; subject: string; status: string }) => (
-                  <div key={g.id} className="flex justify-between rounded-lg border p-3 text-sm">
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{g.subject}</div>
-                      <div className="text-xs text-muted-foreground">{g.grievance_number}</div>
+                stats.recent_complaints.map(
+                  (g: {
+                    id: string;
+                    grievance_number: string;
+                    subject: string;
+                    status: string;
+                  }) => (
+                    <div
+                      key={g.id}
+                      className="flex justify-between rounded-lg border p-3 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{g.subject}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {g.grievance_number}
+                        </div>
+                      </div>
+                      <Badge variant="outline">{g.status}</Badge>
                     </div>
-                    <Badge variant="outline">{g.status}</Badge>
-                  </div>
-                ))
+                  ),
+                )
               )}
             </div>
           </Card>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm"><Link to="/citizens/create-profile">Citizen Enrollment</Link></Button>
-          <Button asChild variant="outline" size="sm"><Link to="/grievances/list">File Complaint</Link></Button>
-          <Button asChild variant="outline" size="sm"><Link to="/surveys/active">Surveys</Link></Button>
-          <Button asChild variant="outline" size="sm"><Link to="/volunteers/attendance">Attendance</Link></Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/citizens/create-profile">Citizen Enrollment</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/grievances/list">File Complaint</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/surveys/active">Surveys</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/volunteers/attendance">Attendance</Link>
+          </Button>
         </div>
       </div>
     </RoleGuard>

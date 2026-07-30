@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VolunteerApplyRouteImport } from './routes/volunteer-apply'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
@@ -50,12 +51,14 @@ import { Route as AppVolunteersListRouteImport } from './routes/_app.volunteers.
 import { Route as AppVolunteersGeographicCoverageRouteImport } from './routes/_app.volunteers.geographic-coverage'
 import { Route as AppVolunteersEnrolledCitizensRouteImport } from './routes/_app.volunteers.enrolled-citizens'
 import { Route as AppVolunteersAttendanceRouteImport } from './routes/_app.volunteers.attendance'
+import { Route as AppVolunteersApplicationsRouteImport } from './routes/_app.volunteers.applications'
 import { Route as AppVolunteersActivityRouteImport } from './routes/_app.volunteers.activity'
 import { Route as AppSurveysResponsesRouteImport } from './routes/_app.surveys.responses'
 import { Route as AppSurveysIntelligenceRouteImport } from './routes/_app.surveys.intelligence'
 import { Route as AppSurveysFormBuilderRouteImport } from './routes/_app.surveys.form-builder'
 import { Route as AppSurveysDetailRouteImport } from './routes/_app.surveys.detail'
 import { Route as AppSurveysDashboardRouteImport } from './routes/_app.surveys.dashboard'
+import { Route as AppSurveysCollectRouteImport } from './routes/_app.surveys.collect'
 import { Route as AppSurveysCensusRouteImport } from './routes/_app.surveys.census'
 import { Route as AppSurveysAnalyticsRouteImport } from './routes/_app.surveys.analytics'
 import { Route as AppSurveysActiveRouteImport } from './routes/_app.surveys.active'
@@ -67,6 +70,7 @@ import { Route as AppSchemesCoverageAnalysisRouteImport } from './routes/_app.sc
 import { Route as AppSchemesBeneficiariesRouteImport } from './routes/_app.schemes.beneficiaries'
 import { Route as AppSchemesApplicationsRouteImport } from './routes/_app.schemes.applications'
 import { Route as AppSchemesApplicationDetailRouteImport } from './routes/_app.schemes.application-detail'
+import { Route as AppProjectsProjectFormRouteImport } from './routes/_app.projects.project-form'
 import { Route as AppProjectsProjectDetailRouteImport } from './routes/_app.projects.project-detail'
 import { Route as AppProjectsProgressTrackerRouteImport } from './routes/_app.projects.progress-tracker'
 import { Route as AppProjectsMpladsRouteImport } from './routes/_app.projects.mplads'
@@ -94,6 +98,7 @@ import { Route as AppGrievancesAnalyticsRouteImport } from './routes/_app.grieva
 import { Route as AppDocumentsProjectDocumentsRouteImport } from './routes/_app.documents.project-documents'
 import { Route as AppDocumentsCitizenDocumentsRouteImport } from './routes/_app.documents.citizen-documents'
 import { Route as AppCommunicationWhatsappRouteImport } from './routes/_app.communication.whatsapp'
+import { Route as AppCommunicationVoiceRouteImport } from './routes/_app.communication.voice'
 import { Route as AppCommunicationSmsRouteImport } from './routes/_app.communication.sms'
 import { Route as AppCommunicationEmailRouteImport } from './routes/_app.communication.email'
 import { Route as AppCitizensSurveysRouteImport } from './routes/_app.citizens.surveys'
@@ -109,8 +114,14 @@ import { Route as AppCitizensBoothMappingRouteImport } from './routes/_app.citiz
 import { Route as AppAnalyticsVillageRouteImport } from './routes/_app.analytics.village'
 import { Route as AppAnalyticsMandalRouteImport } from './routes/_app.analytics.mandal'
 import { Route as AppAnalyticsConstituencyRouteImport } from './routes/_app.analytics.constituency'
+import { Route as AppAnalyticsBoothRouteImport } from './routes/_app.analytics.booth'
 import { Route as AppAnalyticsAssemblyRouteImport } from './routes/_app.analytics.assembly'
 
+const VolunteerApplyRoute = VolunteerApplyRouteImport.update({
+  id: '/volunteer-apply',
+  path: '/volunteer-apply',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -318,6 +329,12 @@ const AppVolunteersAttendanceRoute = AppVolunteersAttendanceRouteImport.update({
   path: '/attendance',
   getParentRoute: () => AppVolunteersRoute,
 } as any)
+const AppVolunteersApplicationsRoute =
+  AppVolunteersApplicationsRouteImport.update({
+    id: '/applications',
+    path: '/applications',
+    getParentRoute: () => AppVolunteersRoute,
+  } as any)
 const AppVolunteersActivityRoute = AppVolunteersActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
@@ -346,6 +363,11 @@ const AppSurveysDetailRoute = AppSurveysDetailRouteImport.update({
 const AppSurveysDashboardRoute = AppSurveysDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppSurveysRoute,
+} as any)
+const AppSurveysCollectRoute = AppSurveysCollectRouteImport.update({
+  id: '/collect',
+  path: '/collect',
   getParentRoute: () => AppSurveysRoute,
 } as any)
 const AppSurveysCensusRoute = AppSurveysCensusRouteImport.update({
@@ -405,6 +427,11 @@ const AppSchemesApplicationDetailRoute =
     path: '/application-detail',
     getParentRoute: () => AppSchemesRoute,
   } as any)
+const AppProjectsProjectFormRoute = AppProjectsProjectFormRouteImport.update({
+  id: '/project-form',
+  path: '/project-form',
+  getParentRoute: () => AppProjectsRoute,
+} as any)
 const AppProjectsProjectDetailRoute =
   AppProjectsProjectDetailRouteImport.update({
     id: '/project-detail',
@@ -552,6 +579,11 @@ const AppCommunicationWhatsappRoute =
     path: '/whatsapp',
     getParentRoute: () => AppCommunicationRoute,
   } as any)
+const AppCommunicationVoiceRoute = AppCommunicationVoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
+  getParentRoute: () => AppCommunicationRoute,
+} as any)
 const AppCommunicationSmsRoute = AppCommunicationSmsRouteImport.update({
   id: '/sms',
   path: '/sms',
@@ -629,6 +661,11 @@ const AppAnalyticsConstituencyRoute =
     path: '/constituency',
     getParentRoute: () => AppAnalyticsRoute,
   } as any)
+const AppAnalyticsBoothRoute = AppAnalyticsBoothRouteImport.update({
+  id: '/booth',
+  path: '/booth',
+  getParentRoute: () => AppAnalyticsRoute,
+} as any)
 const AppAnalyticsAssemblyRoute = AppAnalyticsAssemblyRouteImport.update({
   id: '/assembly',
   path: '/assembly',
@@ -639,6 +676,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/volunteer-apply': typeof VolunteerApplyRoute
   '/admin': typeof AppAdminRoute
   '/analytics': typeof AppAnalyticsRouteWithChildren
   '/citizen': typeof AppCitizenRoute
@@ -660,6 +698,7 @@ export interface FileRoutesByFullPath {
   '/volunteer': typeof AppVolunteerRoute
   '/volunteers': typeof AppVolunteersRouteWithChildren
   '/analytics/assembly': typeof AppAnalyticsAssemblyRoute
+  '/analytics/booth': typeof AppAnalyticsBoothRoute
   '/analytics/constituency': typeof AppAnalyticsConstituencyRoute
   '/analytics/mandal': typeof AppAnalyticsMandalRoute
   '/analytics/village': typeof AppAnalyticsVillageRoute
@@ -675,6 +714,7 @@ export interface FileRoutesByFullPath {
   '/citizens/surveys': typeof AppCitizensSurveysRoute
   '/communication/email': typeof AppCommunicationEmailRoute
   '/communication/sms': typeof AppCommunicationSmsRoute
+  '/communication/voice': typeof AppCommunicationVoiceRoute
   '/communication/whatsapp': typeof AppCommunicationWhatsappRoute
   '/documents/citizen-documents': typeof AppDocumentsCitizenDocumentsRoute
   '/documents/project-documents': typeof AppDocumentsProjectDocumentsRoute
@@ -702,6 +742,7 @@ export interface FileRoutesByFullPath {
   '/projects/mplads': typeof AppProjectsMpladsRoute
   '/projects/progress-tracker': typeof AppProjectsProgressTrackerRoute
   '/projects/project-detail': typeof AppProjectsProjectDetailRoute
+  '/projects/project-form': typeof AppProjectsProjectFormRoute
   '/schemes/application-detail': typeof AppSchemesApplicationDetailRoute
   '/schemes/applications': typeof AppSchemesApplicationsRoute
   '/schemes/beneficiaries': typeof AppSchemesBeneficiariesRoute
@@ -713,12 +754,14 @@ export interface FileRoutesByFullPath {
   '/surveys/active': typeof AppSurveysActiveRoute
   '/surveys/analytics': typeof AppSurveysAnalyticsRoute
   '/surveys/census': typeof AppSurveysCensusRoute
+  '/surveys/collect': typeof AppSurveysCollectRoute
   '/surveys/dashboard': typeof AppSurveysDashboardRoute
   '/surveys/detail': typeof AppSurveysDetailRoute
   '/surveys/form-builder': typeof AppSurveysFormBuilderRoute
   '/surveys/intelligence': typeof AppSurveysIntelligenceRoute
   '/surveys/responses': typeof AppSurveysResponsesRoute
   '/volunteers/activity': typeof AppVolunteersActivityRoute
+  '/volunteers/applications': typeof AppVolunteersApplicationsRoute
   '/volunteers/attendance': typeof AppVolunteersAttendanceRoute
   '/volunteers/enrolled-citizens': typeof AppVolunteersEnrolledCitizensRoute
   '/volunteers/geographic-coverage': typeof AppVolunteersGeographicCoverageRoute
@@ -741,6 +784,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/volunteer-apply': typeof VolunteerApplyRoute
   '/admin': typeof AppAdminRoute
   '/citizen': typeof AppCitizenRoute
   '/coordinator': typeof AppCoordinatorRoute
@@ -752,6 +796,7 @@ export interface FileRoutesByTo {
   '/staff': typeof AppStaffRoute
   '/volunteer': typeof AppVolunteerRoute
   '/analytics/assembly': typeof AppAnalyticsAssemblyRoute
+  '/analytics/booth': typeof AppAnalyticsBoothRoute
   '/analytics/constituency': typeof AppAnalyticsConstituencyRoute
   '/analytics/mandal': typeof AppAnalyticsMandalRoute
   '/analytics/village': typeof AppAnalyticsVillageRoute
@@ -767,6 +812,7 @@ export interface FileRoutesByTo {
   '/citizens/surveys': typeof AppCitizensSurveysRoute
   '/communication/email': typeof AppCommunicationEmailRoute
   '/communication/sms': typeof AppCommunicationSmsRoute
+  '/communication/voice': typeof AppCommunicationVoiceRoute
   '/communication/whatsapp': typeof AppCommunicationWhatsappRoute
   '/documents/citizen-documents': typeof AppDocumentsCitizenDocumentsRoute
   '/documents/project-documents': typeof AppDocumentsProjectDocumentsRoute
@@ -794,6 +840,7 @@ export interface FileRoutesByTo {
   '/projects/mplads': typeof AppProjectsMpladsRoute
   '/projects/progress-tracker': typeof AppProjectsProgressTrackerRoute
   '/projects/project-detail': typeof AppProjectsProjectDetailRoute
+  '/projects/project-form': typeof AppProjectsProjectFormRoute
   '/schemes/application-detail': typeof AppSchemesApplicationDetailRoute
   '/schemes/applications': typeof AppSchemesApplicationsRoute
   '/schemes/beneficiaries': typeof AppSchemesBeneficiariesRoute
@@ -805,12 +852,14 @@ export interface FileRoutesByTo {
   '/surveys/active': typeof AppSurveysActiveRoute
   '/surveys/analytics': typeof AppSurveysAnalyticsRoute
   '/surveys/census': typeof AppSurveysCensusRoute
+  '/surveys/collect': typeof AppSurveysCollectRoute
   '/surveys/dashboard': typeof AppSurveysDashboardRoute
   '/surveys/detail': typeof AppSurveysDetailRoute
   '/surveys/form-builder': typeof AppSurveysFormBuilderRoute
   '/surveys/intelligence': typeof AppSurveysIntelligenceRoute
   '/surveys/responses': typeof AppSurveysResponsesRoute
   '/volunteers/activity': typeof AppVolunteersActivityRoute
+  '/volunteers/applications': typeof AppVolunteersApplicationsRoute
   '/volunteers/attendance': typeof AppVolunteersAttendanceRoute
   '/volunteers/enrolled-citizens': typeof AppVolunteersEnrolledCitizensRoute
   '/volunteers/geographic-coverage': typeof AppVolunteersGeographicCoverageRoute
@@ -835,6 +884,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/volunteer-apply': typeof VolunteerApplyRoute
   '/_app/admin': typeof AppAdminRoute
   '/_app/analytics': typeof AppAnalyticsRouteWithChildren
   '/_app/citizen': typeof AppCitizenRoute
@@ -856,6 +906,7 @@ export interface FileRoutesById {
   '/_app/volunteer': typeof AppVolunteerRoute
   '/_app/volunteers': typeof AppVolunteersRouteWithChildren
   '/_app/analytics/assembly': typeof AppAnalyticsAssemblyRoute
+  '/_app/analytics/booth': typeof AppAnalyticsBoothRoute
   '/_app/analytics/constituency': typeof AppAnalyticsConstituencyRoute
   '/_app/analytics/mandal': typeof AppAnalyticsMandalRoute
   '/_app/analytics/village': typeof AppAnalyticsVillageRoute
@@ -871,6 +922,7 @@ export interface FileRoutesById {
   '/_app/citizens/surveys': typeof AppCitizensSurveysRoute
   '/_app/communication/email': typeof AppCommunicationEmailRoute
   '/_app/communication/sms': typeof AppCommunicationSmsRoute
+  '/_app/communication/voice': typeof AppCommunicationVoiceRoute
   '/_app/communication/whatsapp': typeof AppCommunicationWhatsappRoute
   '/_app/documents/citizen-documents': typeof AppDocumentsCitizenDocumentsRoute
   '/_app/documents/project-documents': typeof AppDocumentsProjectDocumentsRoute
@@ -898,6 +950,7 @@ export interface FileRoutesById {
   '/_app/projects/mplads': typeof AppProjectsMpladsRoute
   '/_app/projects/progress-tracker': typeof AppProjectsProgressTrackerRoute
   '/_app/projects/project-detail': typeof AppProjectsProjectDetailRoute
+  '/_app/projects/project-form': typeof AppProjectsProjectFormRoute
   '/_app/schemes/application-detail': typeof AppSchemesApplicationDetailRoute
   '/_app/schemes/applications': typeof AppSchemesApplicationsRoute
   '/_app/schemes/beneficiaries': typeof AppSchemesBeneficiariesRoute
@@ -909,12 +962,14 @@ export interface FileRoutesById {
   '/_app/surveys/active': typeof AppSurveysActiveRoute
   '/_app/surveys/analytics': typeof AppSurveysAnalyticsRoute
   '/_app/surveys/census': typeof AppSurveysCensusRoute
+  '/_app/surveys/collect': typeof AppSurveysCollectRoute
   '/_app/surveys/dashboard': typeof AppSurveysDashboardRoute
   '/_app/surveys/detail': typeof AppSurveysDetailRoute
   '/_app/surveys/form-builder': typeof AppSurveysFormBuilderRoute
   '/_app/surveys/intelligence': typeof AppSurveysIntelligenceRoute
   '/_app/surveys/responses': typeof AppSurveysResponsesRoute
   '/_app/volunteers/activity': typeof AppVolunteersActivityRoute
+  '/_app/volunteers/applications': typeof AppVolunteersApplicationsRoute
   '/_app/volunteers/attendance': typeof AppVolunteersAttendanceRoute
   '/_app/volunteers/enrolled-citizens': typeof AppVolunteersEnrolledCitizensRoute
   '/_app/volunteers/geographic-coverage': typeof AppVolunteersGeographicCoverageRoute
@@ -939,6 +994,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
+    | '/volunteer-apply'
     | '/admin'
     | '/analytics'
     | '/citizen'
@@ -960,6 +1016,7 @@ export interface FileRouteTypes {
     | '/volunteer'
     | '/volunteers'
     | '/analytics/assembly'
+    | '/analytics/booth'
     | '/analytics/constituency'
     | '/analytics/mandal'
     | '/analytics/village'
@@ -975,6 +1032,7 @@ export interface FileRouteTypes {
     | '/citizens/surveys'
     | '/communication/email'
     | '/communication/sms'
+    | '/communication/voice'
     | '/communication/whatsapp'
     | '/documents/citizen-documents'
     | '/documents/project-documents'
@@ -1002,6 +1060,7 @@ export interface FileRouteTypes {
     | '/projects/mplads'
     | '/projects/progress-tracker'
     | '/projects/project-detail'
+    | '/projects/project-form'
     | '/schemes/application-detail'
     | '/schemes/applications'
     | '/schemes/beneficiaries'
@@ -1013,12 +1072,14 @@ export interface FileRouteTypes {
     | '/surveys/active'
     | '/surveys/analytics'
     | '/surveys/census'
+    | '/surveys/collect'
     | '/surveys/dashboard'
     | '/surveys/detail'
     | '/surveys/form-builder'
     | '/surveys/intelligence'
     | '/surveys/responses'
     | '/volunteers/activity'
+    | '/volunteers/applications'
     | '/volunteers/attendance'
     | '/volunteers/enrolled-citizens'
     | '/volunteers/geographic-coverage'
@@ -1041,6 +1102,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
+    | '/volunteer-apply'
     | '/admin'
     | '/citizen'
     | '/coordinator'
@@ -1052,6 +1114,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/volunteer'
     | '/analytics/assembly'
+    | '/analytics/booth'
     | '/analytics/constituency'
     | '/analytics/mandal'
     | '/analytics/village'
@@ -1067,6 +1130,7 @@ export interface FileRouteTypes {
     | '/citizens/surveys'
     | '/communication/email'
     | '/communication/sms'
+    | '/communication/voice'
     | '/communication/whatsapp'
     | '/documents/citizen-documents'
     | '/documents/project-documents'
@@ -1094,6 +1158,7 @@ export interface FileRouteTypes {
     | '/projects/mplads'
     | '/projects/progress-tracker'
     | '/projects/project-detail'
+    | '/projects/project-form'
     | '/schemes/application-detail'
     | '/schemes/applications'
     | '/schemes/beneficiaries'
@@ -1105,12 +1170,14 @@ export interface FileRouteTypes {
     | '/surveys/active'
     | '/surveys/analytics'
     | '/surveys/census'
+    | '/surveys/collect'
     | '/surveys/dashboard'
     | '/surveys/detail'
     | '/surveys/form-builder'
     | '/surveys/intelligence'
     | '/surveys/responses'
     | '/volunteers/activity'
+    | '/volunteers/applications'
     | '/volunteers/attendance'
     | '/volunteers/enrolled-citizens'
     | '/volunteers/geographic-coverage'
@@ -1134,6 +1201,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/register'
+    | '/volunteer-apply'
     | '/_app/admin'
     | '/_app/analytics'
     | '/_app/citizen'
@@ -1155,6 +1223,7 @@ export interface FileRouteTypes {
     | '/_app/volunteer'
     | '/_app/volunteers'
     | '/_app/analytics/assembly'
+    | '/_app/analytics/booth'
     | '/_app/analytics/constituency'
     | '/_app/analytics/mandal'
     | '/_app/analytics/village'
@@ -1170,6 +1239,7 @@ export interface FileRouteTypes {
     | '/_app/citizens/surveys'
     | '/_app/communication/email'
     | '/_app/communication/sms'
+    | '/_app/communication/voice'
     | '/_app/communication/whatsapp'
     | '/_app/documents/citizen-documents'
     | '/_app/documents/project-documents'
@@ -1197,6 +1267,7 @@ export interface FileRouteTypes {
     | '/_app/projects/mplads'
     | '/_app/projects/progress-tracker'
     | '/_app/projects/project-detail'
+    | '/_app/projects/project-form'
     | '/_app/schemes/application-detail'
     | '/_app/schemes/applications'
     | '/_app/schemes/beneficiaries'
@@ -1208,12 +1279,14 @@ export interface FileRouteTypes {
     | '/_app/surveys/active'
     | '/_app/surveys/analytics'
     | '/_app/surveys/census'
+    | '/_app/surveys/collect'
     | '/_app/surveys/dashboard'
     | '/_app/surveys/detail'
     | '/_app/surveys/form-builder'
     | '/_app/surveys/intelligence'
     | '/_app/surveys/responses'
     | '/_app/volunteers/activity'
+    | '/_app/volunteers/applications'
     | '/_app/volunteers/attendance'
     | '/_app/volunteers/enrolled-citizens'
     | '/_app/volunteers/geographic-coverage'
@@ -1238,10 +1311,18 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  VolunteerApplyRoute: typeof VolunteerApplyRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/volunteer-apply': {
+      id: '/volunteer-apply'
+      path: '/volunteer-apply'
+      fullPath: '/volunteer-apply'
+      preLoaderRoute: typeof VolunteerApplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -1529,6 +1610,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppVolunteersAttendanceRouteImport
       parentRoute: typeof AppVolunteersRoute
     }
+    '/_app/volunteers/applications': {
+      id: '/_app/volunteers/applications'
+      path: '/applications'
+      fullPath: '/volunteers/applications'
+      preLoaderRoute: typeof AppVolunteersApplicationsRouteImport
+      parentRoute: typeof AppVolunteersRoute
+    }
     '/_app/volunteers/activity': {
       id: '/_app/volunteers/activity'
       path: '/activity'
@@ -1569,6 +1657,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/surveys/dashboard'
       preLoaderRoute: typeof AppSurveysDashboardRouteImport
+      parentRoute: typeof AppSurveysRoute
+    }
+    '/_app/surveys/collect': {
+      id: '/_app/surveys/collect'
+      path: '/collect'
+      fullPath: '/surveys/collect'
+      preLoaderRoute: typeof AppSurveysCollectRouteImport
       parentRoute: typeof AppSurveysRoute
     }
     '/_app/surveys/census': {
@@ -1647,6 +1742,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/schemes/application-detail'
       preLoaderRoute: typeof AppSchemesApplicationDetailRouteImport
       parentRoute: typeof AppSchemesRoute
+    }
+    '/_app/projects/project-form': {
+      id: '/_app/projects/project-form'
+      path: '/project-form'
+      fullPath: '/projects/project-form'
+      preLoaderRoute: typeof AppProjectsProjectFormRouteImport
+      parentRoute: typeof AppProjectsRoute
     }
     '/_app/projects/project-detail': {
       id: '/_app/projects/project-detail'
@@ -1837,6 +1939,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCommunicationWhatsappRouteImport
       parentRoute: typeof AppCommunicationRoute
     }
+    '/_app/communication/voice': {
+      id: '/_app/communication/voice'
+      path: '/voice'
+      fullPath: '/communication/voice'
+      preLoaderRoute: typeof AppCommunicationVoiceRouteImport
+      parentRoute: typeof AppCommunicationRoute
+    }
     '/_app/communication/sms': {
       id: '/_app/communication/sms'
       path: '/sms'
@@ -1942,6 +2051,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsConstituencyRouteImport
       parentRoute: typeof AppAnalyticsRoute
     }
+    '/_app/analytics/booth': {
+      id: '/_app/analytics/booth'
+      path: '/booth'
+      fullPath: '/analytics/booth'
+      preLoaderRoute: typeof AppAnalyticsBoothRouteImport
+      parentRoute: typeof AppAnalyticsRoute
+    }
     '/_app/analytics/assembly': {
       id: '/_app/analytics/assembly'
       path: '/assembly'
@@ -1954,6 +2070,7 @@ declare module '@tanstack/react-router' {
 
 interface AppAnalyticsRouteChildren {
   AppAnalyticsAssemblyRoute: typeof AppAnalyticsAssemblyRoute
+  AppAnalyticsBoothRoute: typeof AppAnalyticsBoothRoute
   AppAnalyticsConstituencyRoute: typeof AppAnalyticsConstituencyRoute
   AppAnalyticsMandalRoute: typeof AppAnalyticsMandalRoute
   AppAnalyticsVillageRoute: typeof AppAnalyticsVillageRoute
@@ -1962,6 +2079,7 @@ interface AppAnalyticsRouteChildren {
 
 const AppAnalyticsRouteChildren: AppAnalyticsRouteChildren = {
   AppAnalyticsAssemblyRoute: AppAnalyticsAssemblyRoute,
+  AppAnalyticsBoothRoute: AppAnalyticsBoothRoute,
   AppAnalyticsConstituencyRoute: AppAnalyticsConstituencyRoute,
   AppAnalyticsMandalRoute: AppAnalyticsMandalRoute,
   AppAnalyticsVillageRoute: AppAnalyticsVillageRoute,
@@ -2007,6 +2125,7 @@ const AppCitizensRouteWithChildren = AppCitizensRoute._addFileChildren(
 interface AppCommunicationRouteChildren {
   AppCommunicationEmailRoute: typeof AppCommunicationEmailRoute
   AppCommunicationSmsRoute: typeof AppCommunicationSmsRoute
+  AppCommunicationVoiceRoute: typeof AppCommunicationVoiceRoute
   AppCommunicationWhatsappRoute: typeof AppCommunicationWhatsappRoute
   AppCommunicationIndexRoute: typeof AppCommunicationIndexRoute
 }
@@ -2014,6 +2133,7 @@ interface AppCommunicationRouteChildren {
 const AppCommunicationRouteChildren: AppCommunicationRouteChildren = {
   AppCommunicationEmailRoute: AppCommunicationEmailRoute,
   AppCommunicationSmsRoute: AppCommunicationSmsRoute,
+  AppCommunicationVoiceRoute: AppCommunicationVoiceRoute,
   AppCommunicationWhatsappRoute: AppCommunicationWhatsappRoute,
   AppCommunicationIndexRoute: AppCommunicationIndexRoute,
 }
@@ -2102,6 +2222,7 @@ interface AppProjectsRouteChildren {
   AppProjectsMpladsRoute: typeof AppProjectsMpladsRoute
   AppProjectsProgressTrackerRoute: typeof AppProjectsProgressTrackerRoute
   AppProjectsProjectDetailRoute: typeof AppProjectsProjectDetailRoute
+  AppProjectsProjectFormRoute: typeof AppProjectsProjectFormRoute
   AppProjectsIndexRoute: typeof AppProjectsIndexRoute
 }
 
@@ -2114,6 +2235,7 @@ const AppProjectsRouteChildren: AppProjectsRouteChildren = {
   AppProjectsMpladsRoute: AppProjectsMpladsRoute,
   AppProjectsProgressTrackerRoute: AppProjectsProgressTrackerRoute,
   AppProjectsProjectDetailRoute: AppProjectsProjectDetailRoute,
+  AppProjectsProjectFormRoute: AppProjectsProjectFormRoute,
   AppProjectsIndexRoute: AppProjectsIndexRoute,
 }
 
@@ -2153,6 +2275,7 @@ interface AppSurveysRouteChildren {
   AppSurveysActiveRoute: typeof AppSurveysActiveRoute
   AppSurveysAnalyticsRoute: typeof AppSurveysAnalyticsRoute
   AppSurveysCensusRoute: typeof AppSurveysCensusRoute
+  AppSurveysCollectRoute: typeof AppSurveysCollectRoute
   AppSurveysDashboardRoute: typeof AppSurveysDashboardRoute
   AppSurveysDetailRoute: typeof AppSurveysDetailRoute
   AppSurveysFormBuilderRoute: typeof AppSurveysFormBuilderRoute
@@ -2165,6 +2288,7 @@ const AppSurveysRouteChildren: AppSurveysRouteChildren = {
   AppSurveysActiveRoute: AppSurveysActiveRoute,
   AppSurveysAnalyticsRoute: AppSurveysAnalyticsRoute,
   AppSurveysCensusRoute: AppSurveysCensusRoute,
+  AppSurveysCollectRoute: AppSurveysCollectRoute,
   AppSurveysDashboardRoute: AppSurveysDashboardRoute,
   AppSurveysDetailRoute: AppSurveysDetailRoute,
   AppSurveysFormBuilderRoute: AppSurveysFormBuilderRoute,
@@ -2179,6 +2303,7 @@ const AppSurveysRouteWithChildren = AppSurveysRoute._addFileChildren(
 
 interface AppVolunteersRouteChildren {
   AppVolunteersActivityRoute: typeof AppVolunteersActivityRoute
+  AppVolunteersApplicationsRoute: typeof AppVolunteersApplicationsRoute
   AppVolunteersAttendanceRoute: typeof AppVolunteersAttendanceRoute
   AppVolunteersEnrolledCitizensRoute: typeof AppVolunteersEnrolledCitizensRoute
   AppVolunteersGeographicCoverageRoute: typeof AppVolunteersGeographicCoverageRoute
@@ -2191,6 +2316,7 @@ interface AppVolunteersRouteChildren {
 
 const AppVolunteersRouteChildren: AppVolunteersRouteChildren = {
   AppVolunteersActivityRoute: AppVolunteersActivityRoute,
+  AppVolunteersApplicationsRoute: AppVolunteersApplicationsRoute,
   AppVolunteersAttendanceRoute: AppVolunteersAttendanceRoute,
   AppVolunteersEnrolledCitizensRoute: AppVolunteersEnrolledCitizensRoute,
   AppVolunteersGeographicCoverageRoute: AppVolunteersGeographicCoverageRoute,
@@ -2258,6 +2384,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  VolunteerApplyRoute: VolunteerApplyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -38,7 +38,7 @@ export function AppSidebar() {
     .map((section) =>
       section.title === "Dashboard"
         ? { ...section, url: dashboardPath }
-        : section
+        : section,
     );
 
   const isActive = (url: string) =>
@@ -119,18 +119,23 @@ export function AppSidebar() {
                               </Link>
                             </SidebarMenuSubButton>
                           </SidebarMenuSubItem>
-                          {section.children.map((child) => (
-                            <SidebarMenuSubItem key={child.url}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={pathname === child.url}
-                              >
-                                <Link to={child.url}>
-                                  <span>{child.title}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
+                          {section.children
+                            .filter(
+                              (child) =>
+                                !child.roles || child.roles.includes(roleSlug),
+                            )
+                            .map((child) => (
+                              <SidebarMenuSubItem key={child.url}>
+                                <SidebarMenuSubButton
+                                  asChild
+                                  isActive={pathname === child.url}
+                                >
+                                  <Link to={child.url}>
+                                    <span>{child.title}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
                         </SidebarMenuSub>
                       </CollapsibleContent>
                     </SidebarMenuItem>
@@ -145,7 +150,9 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border/60">
         {!collapsed ? (
           <div className="rounded-lg bg-sidebar-accent/60 p-3 text-xs text-sidebar-foreground/80">
-            <div className="font-semibold text-sidebar-foreground">Lok Sabha</div>
+            <div className="font-semibold text-sidebar-foreground">
+              Lok Sabha
+            </div>
             <div className="text-sidebar-foreground/60">2024 — 2029 Term</div>
           </div>
         ) : (

@@ -4,7 +4,12 @@ import { Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { EmptyState } from "@/components/layout/EmptyState";
 
-interface ActivityItem { who: string; what: string; when: string; type?: string; }
+interface ActivityItem {
+  who: string;
+  what: string;
+  when: string;
+  type?: string;
+}
 
 export function ActivityFeed({ activity }: { activity?: ActivityItem[] }) {
   const items = activity ?? [];
@@ -14,12 +19,22 @@ export function ActivityFeed({ activity }: { activity?: ActivityItem[] }) {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h3 className="text-h3 font-bold">Recent activity</h3>
-          <p className="text-xs text-muted-foreground">Across booths, mandals & departments</p>
+          <p className="text-xs text-muted-foreground">
+            Across booths, mandals & departments
+          </p>
         </div>
-        {items.length > 0 && <Button variant="ghost" size="sm">View all</Button>}
+        {items.length > 0 && (
+          <Button variant="ghost" size="sm">
+            View all
+          </Button>
+        )}
       </div>
       {items.length === 0 ? (
-        <EmptyState icon={Activity} title="No activity yet" description="Activity will appear here as volunteers start submitting data" />
+        <EmptyState
+          icon={Activity}
+          title="No activity yet"
+          description="Activity will appear here as volunteers start submitting data"
+        />
       ) : (
         <ol className="space-y-3">
           {items.slice(0, 8).map((a, i) => {
@@ -33,7 +48,12 @@ export function ActivityFeed({ activity }: { activity?: ActivityItem[] }) {
                 transition={{ duration: 0.3, delay: i * 0.04 }}
                 className="flex items-start gap-3"
               >
-                <div className={"grid h-8 w-8 shrink-0 place-items-center rounded-md " + tone}>
+                <div
+                  className={
+                    "grid h-8 w-8 shrink-0 place-items-center rounded-md " +
+                    tone
+                  }
+                >
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1 border-b border-border/60 pb-3">

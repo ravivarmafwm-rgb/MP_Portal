@@ -11,11 +11,22 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
-  createCitizen, uploadDocument,
-  fetchLocMandals, fetchLocVillages, fetchLocWards, fetchLocPollingBooths, fetchFamilies,
+  createCitizen,
+  uploadDocument,
+  fetchLocMandals,
+  fetchLocVillages,
+  fetchLocWards,
+  fetchLocPollingBooths,
+  fetchFamilies,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -27,23 +38,23 @@ export const Route = createFileRoute("/_app/citizens/create-profile")({
 });
 
 const schema = z.object({
-  first_name:    z.string().min(1, "First name required"),
-  last_name:     z.string().min(1, "Last name required"),
-  middle_name:   z.string().optional(),
+  first_name: z.string().min(1, "First name required"),
+  last_name: z.string().min(1, "Last name required"),
+  middle_name: z.string().optional(),
   date_of_birth: z.string().min(1, "Date of birth required"),
-  gender:        z.enum(["Male","Female","Other"]),
+  gender: z.enum(["Male", "Female", "Other"]),
   mobile_number: z.string().min(10, "Valid mobile required"),
-  aadhaar_number:z.string().optional(),
-  voter_id:      z.string().optional(),
-  occupation:    z.string().optional(),
-  education:     z.string().optional(),
-  father_name:   z.string().optional(),
-  blood_group:   z.string().optional(),
-  house_number:  z.string().optional(),
-  street:        z.string().optional(),
-  pincode:       z.string().optional(),
-  district:      z.string().optional(),
-  state:         z.string().optional(),
+  aadhaar_number: z.string().optional(),
+  voter_id: z.string().optional(),
+  occupation: z.string().optional(),
+  education: z.string().optional(),
+  father_name: z.string().optional(),
+  blood_group: z.string().optional(),
+  house_number: z.string().optional(),
+  street: z.string().optional(),
+  pincode: z.string().optional(),
+  district: z.string().optional(),
+  state: z.string().optional(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -58,9 +69,13 @@ function CreateCitizenPage() {
   const [aadhaarFile, setAadhaarFile] = useState<File | null>(null);
   const [voterFile, setVoterFile] = useState<File | null>(null);
 
-  const canEnroll = user?.role_slug === "volunteer" || user?.role_slug === "super-admin";
+  const canEnroll =
+    user?.role_slug === "volunteer" || user?.role_slug === "super-admin";
 
-  const { data: mandals } = useQuery({ queryKey: ["mandals"], queryFn: () => fetchLocMandals() });
+  const { data: mandals } = useQuery({
+    queryKey: ["mandals"],
+    queryFn: () => fetchLocMandals(),
+  });
   const { data: villages } = useQuery({
     queryKey: ["villages", mandalId],
     queryFn: () => fetchLocVillages(mandalId),
@@ -76,11 +91,23 @@ function CreateCitizenPage() {
     queryFn: () => fetchLocPollingBooths(villageId),
     enabled: !!villageId,
   });
-  const { data: families } = useQuery({ queryKey: ["families"], queryFn: () => fetchFamilies({ per_page: 50 }) });
+  const { data: families } = useQuery({
+    queryKey: ["families"],
+    queryFn: () => fetchFamilies({ per_page: 50 }),
+  });
 
-  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { gender: "Male", state: "Telangana", district: "Hyderabad" },
+    defaultValues: {
+      gender: "Male",
+      state: "Telangana",
+      district: "Hyderabad",
+    },
   });
 
   const onSubmit = async (data: FormData) => {
@@ -115,10 +142,14 @@ function CreateCitizenPage() {
       toast.success(`Citizen ${result.unique_id} enrolled successfully!`);
       navigate({ to: "/citizens/list" });
     } catch (err: unknown) {
-      const resp = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+      const resp = err as {
+        response?: {
+          data?: { message?: string; errors?: Record<string, string[]> };
+        };
+      };
       const msg = resp?.response?.data?.errors
         ? Object.values(resp.response.data.errors).flat().join(", ")
-        : resp?.response?.data?.message ?? "Enrollment failed.";
+        : (resp?.response?.data?.message ?? "Enrollment failed.");
       toast.error(msg);
     }
   };
@@ -138,24 +169,46 @@ function CreateCitizenPage() {
         description="Volunteer-only: register a new citizen into the constituency database"
         actions={
           <Button variant="outline" size="sm" asChild>
-            <Link to="/citizens/list"><ArrowLeft className="h-4 w-4 mr-1.5" /> Back to List</Link>
+            <Link to="/citizens/list">
+              <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to List
+            </Link>
           </Button>
         }
       />
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl p-4 md:p-8 space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-3xl p-4 md:p-8 space-y-6"
+      >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <Card className="p-6">
             <h3 className="text-h3 font-bold mb-4">Personal Details</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="first_name">First Name *</Label>
-                <Input id="first_name" {...register("first_name")} placeholder="Ravi" />
-                {errors.first_name && <p className="text-xs text-destructive">{errors.first_name.message}</p>}
+                <Input
+                  id="first_name"
+                  {...register("first_name")}
+                  placeholder="Ravi"
+                />
+                {errors.first_name && (
+                  <p className="text-xs text-destructive">
+                    {errors.first_name.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="last_name">Last Name *</Label>
-                <Input id="last_name" {...register("last_name")} placeholder="Reddy" />
-                {errors.last_name && <p className="text-xs text-destructive">{errors.last_name.message}</p>}
+                <Input
+                  id="last_name"
+                  {...register("last_name")}
+                  placeholder="Reddy"
+                />
+                {errors.last_name && (
+                  <p className="text-xs text-destructive">
+                    {errors.last_name.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="middle_name">Middle Name</Label>
@@ -163,13 +216,28 @@ function CreateCitizenPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="date_of_birth">Date of Birth *</Label>
-                <Input id="date_of_birth" type="date" {...register("date_of_birth")} />
-                {errors.date_of_birth && <p className="text-xs text-destructive">{errors.date_of_birth.message}</p>}
+                <Input
+                  id="date_of_birth"
+                  type="date"
+                  {...register("date_of_birth")}
+                />
+                {errors.date_of_birth && (
+                  <p className="text-xs text-destructive">
+                    {errors.date_of_birth.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Gender *</Label>
-                <Select defaultValue="Male" onValueChange={(v) => setValue("gender", v as "Male"|"Female"|"Other")}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  defaultValue="Male"
+                  onValueChange={(v) =>
+                    setValue("gender", v as "Male" | "Female" | "Other")
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Male">Male</SelectItem>
                     <SelectItem value="Female">Female</SelectItem>
@@ -179,8 +247,16 @@ function CreateCitizenPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="mobile_number">Mobile Number *</Label>
-                <Input id="mobile_number" {...register("mobile_number")} placeholder="9876543210" />
-                {errors.mobile_number && <p className="text-xs text-destructive">{errors.mobile_number.message}</p>}
+                <Input
+                  id="mobile_number"
+                  {...register("mobile_number")}
+                  placeholder="9876543210"
+                />
+                {errors.mobile_number && (
+                  <p className="text-xs text-destructive">
+                    {errors.mobile_number.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="occupation">Occupation</Label>
@@ -202,19 +278,35 @@ function CreateCitizenPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="aadhaar_number">Aadhaar Number</Label>
-                <Input id="aadhaar_number" {...register("aadhaar_number")} placeholder="XXXX-XXXX-XXXX" />
+                <Input
+                  id="aadhaar_number"
+                  {...register("aadhaar_number")}
+                  placeholder="XXXX-XXXX-XXXX"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="voter_id">Voter ID</Label>
-                <Input id="voter_id" {...register("voter_id")} placeholder="AP1234567" />
+                <Input
+                  id="voter_id"
+                  {...register("voter_id")}
+                  placeholder="AP1234567"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Aadhaar Upload</Label>
-                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setAadhaarFile(e.target.files?.[0] ?? null)} />
+                <Input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => setAadhaarFile(e.target.files?.[0] ?? null)}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Voter ID Upload</Label>
-                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setVoterFile(e.target.files?.[0] ?? null)} />
+                <Input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => setVoterFile(e.target.files?.[0] ?? null)}
+                />
               </div>
             </div>
           </Card>
@@ -224,56 +316,112 @@ function CreateCitizenPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Mandal</Label>
-                <Select value={mandalId} onValueChange={(v) => { setMandalId(v); setVillageId(""); setWardId(""); setBoothId(""); }}>
-                  <SelectTrigger><SelectValue placeholder="Select mandal" /></SelectTrigger>
+                <Select
+                  value={mandalId}
+                  onValueChange={(v) => {
+                    setMandalId(v);
+                    setVillageId("");
+                    setWardId("");
+                    setBoothId("");
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select mandal" />
+                  </SelectTrigger>
                   <SelectContent>
                     {(mandals ?? []).map((m: { id: string; name: string }) => (
-                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Village</Label>
-                <Select value={villageId} onValueChange={(v) => { setVillageId(v); setWardId(""); setBoothId(""); }} disabled={!mandalId}>
-                  <SelectTrigger><SelectValue placeholder="Select village" /></SelectTrigger>
+                <Select
+                  value={villageId}
+                  onValueChange={(v) => {
+                    setVillageId(v);
+                    setWardId("");
+                    setBoothId("");
+                  }}
+                  disabled={!mandalId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select village" />
+                  </SelectTrigger>
                   <SelectContent>
                     {(villages ?? []).map((v: { id: string; name: string }) => (
-                      <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Ward</Label>
-                <Select value={wardId} onValueChange={setWardId} disabled={!villageId}>
-                  <SelectTrigger><SelectValue placeholder="Select ward" /></SelectTrigger>
+                <Select
+                  value={wardId}
+                  onValueChange={setWardId}
+                  disabled={!villageId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select ward" />
+                  </SelectTrigger>
                   <SelectContent>
                     {(wards ?? []).map((w: { id: string; name: string }) => (
-                      <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                      <SelectItem key={w.id} value={w.id}>
+                        {w.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Polling Booth</Label>
-                <Select value={boothId} onValueChange={setBoothId} disabled={!villageId}>
-                  <SelectTrigger><SelectValue placeholder="Select booth" /></SelectTrigger>
+                <Select
+                  value={boothId}
+                  onValueChange={setBoothId}
+                  disabled={!villageId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select booth" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {(booths ?? []).map((b: { id: string; name: string; booth_number?: string }) => (
-                      <SelectItem key={b.id} value={b.id}>{b.booth_number ? `Booth ${b.booth_number}` : b.name}</SelectItem>
-                    ))}
+                    {(booths ?? []).map(
+                      (b: {
+                        id: string;
+                        name: string;
+                        booth_number?: string;
+                      }) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.booth_number ? `Booth ${b.booth_number}` : b.name}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Link to Family</Label>
                 <Select value={familyId} onValueChange={setFamilyId}>
-                  <SelectTrigger><SelectValue placeholder="Optional family" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Optional family" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {(families?.data ?? []).map((f: { id: string; family_id: string; head_of_family_name?: string }) => (
-                      <SelectItem key={f.id} value={f.id}>{f.head_of_family_name ?? f.family_id}</SelectItem>
-                    ))}
+                    {(families?.data ?? []).map(
+                      (f: {
+                        id: string;
+                        family_id: string;
+                        head_of_family_name?: string;
+                      }) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.head_of_family_name ?? f.family_id}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -287,7 +435,11 @@ function CreateCitizenPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="pincode">Pincode</Label>
-                <Input id="pincode" {...register("pincode")} placeholder="500084" />
+                <Input
+                  id="pincode"
+                  {...register("pincode")}
+                  placeholder="500084"
+                />
               </div>
             </div>
           </Card>
@@ -299,7 +451,11 @@ function CreateCitizenPage() {
               <Link to="/citizens/list">Cancel</Link>
             </Button>
             <Button type="submit" disabled={isSubmitting} className="gap-2">
-              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
               {isSubmitting ? "Enrolling…" : "Enroll Citizen"}
             </Button>
           </div>

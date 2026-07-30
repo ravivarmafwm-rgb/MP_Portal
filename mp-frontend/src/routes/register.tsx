@@ -1,264 +1,257 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, Eye, EyeOff, Loader2, Lock, Mail, User } from "lucide-react";
+import {
+  Building2,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  Mail,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
-import { apiRoles } from "@/lib/api";
 import { getDashboardPath } from "@/lib/roles";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/register")({
-  component: RegisterPage,
-});
+export const Route = createFileRoute("/register")({ component: RegisterPage });
 
-const schema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  password_confirmation: z.string().min(8, "Confirm password must be at least 8 characters"),
-  role_slug: z.string().min(1, "Please select a role"),
-}).refine((data) => data.password === data.password_confirmation, {
-  message: "Passwords don't match",
-  path: ["password_confirmation"],
-});
+const schema = z
+  .object({
+    name: z.string().trim().min(2, "Enter your full name").max(255),
+    email: z.string().trim().email("Enter a valid email address").max(255),
+    password: z
+      .string()
+      .min(12, "Use at least 12 characters")
+      .regex(/[a-z]/, "Add a lowercase letter")
+      .regex(/[A-Z]/, "Add an uppercase letter")
+      .regex(/\d/, "Add a number")
+      .regex(/[^A-Za-z0-9]/, "Add a symbol"),
+    password_confirmation: z.string(),
+  })
+  .refine((data) => data.password === data.password_confirmation, {
+    message: "Passwords do not match",
+    path: ["password_confirmation"],
+  });
 
 type FormData = z.infer<typeof schema>;
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const { register: authRegister, isAuthenticated, user, isLoading } = useAuth();
-  const [showPass, setShowPass] = useState(false);
-  const [showConfirmPass, setShowConfirmPass] = useState(false);
-  const [roles, setRoles] = useState<Array<{ id: string; name: string; slug: string; description: string }>>([]);
-  const [rolesLoading, setRolesLoading] = useState(true);
-
-  // Already logged in → go to role dashboard
-  if (!isLoading && isAuthenticated && user) {
-    navigate({ to: getDashboardPath(user.role_slug), replace: true });
-    return null;
-  }
-
+  const {
+    register: createAccount,
+    isAuthenticated,
+    user,
+    isLoading,
+  } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  useEffect(() => {
-    const fetchRoles = async () => {
-      try {
-        const data = await apiRoles();
-        setRoles(data);
-      } catch (err) {
-        console.error("Failed to fetch roles", err);
-        toast.error("Failed to load roles");
-      } finally {
-        setRolesLoading(false);
-      }
-    };
-    fetchRoles();
-  }, []);
+  if (!isLoading && isAuthenticated && user) {
+    void navigate({ to: getDashboardPath(user.role_slug), replace: true });
+    return null;
+  }
 
   const onSubmit = async (data: FormData) => {
     try {
-      const authUser = await authRegister(data.name, data.email, data.password, data.password_confirmation, data.role_slug);
-      toast.success("Registration successful!");
-      navigate({ to: getDashboardPath(authUser.role_slug), replace: true });
-    } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } })?.response?.data?.message ||
-        (err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } })?.response?.data?.errors?.email?.[0] ||
-        "Registration failed. Please try again.";
-      toast.error(msg);
+      const authUser = await createAccount(
+        data.name,
+        data.email,
+        data.password,
+        data.password_confirmation,
+      );
+      toast.success("Citizen account created successfully");
+      await navigate({
+        to: getDashboardPath(authUser.role_slug),
+        replace: true,
+      });
+    } catch (error: unknown) {
+      const response = (
+        error as {
+          response?: {
+            data?: { message?: string; errors?: Record<string, string[]> };
+          };
+        }
+      ).response?.data;
+      toast.error(
+        response?.errors?.email?.[0] ??
+          response?.errors?.password?.[0] ??
+          response?.message ??
+          "Registration failed. Please try again.",
+      );
     }
   };
 
   return (
-    <div className="flex min-h-screen">
-      {/* ── Left panel ── */}
-      <div className="hidden lg:flex lg:w-1/2 bg-sidebar flex-col justify-between p-12 relative overflow-hidden">
-        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-sidebar-primary/20 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-sidebar-primary/10 blur-3xl" />
-
-        <div className="relative flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-lg">
-            <Building2 className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="font-display text-lg font-bold text-sidebar-foreground">MP Connect</div>
-            <div className="text-xs text-sidebar-foreground/60">Constituency Platform</div>
-          </div>
-        </div>
-
-        <div className="relative space-y-6">
-          <h1 className="font-display text-4xl font-bold leading-tight text-sidebar-foreground">
-            Create your <br />
-            <span className="text-sidebar-primary">account</span>
-          </h1>
-          <p className="text-sidebar-foreground/60 text-sm max-w-xs leading-relaxed">
-            Join our platform and manage constituency operations efficiently.
-          </p>
-        </div>
-
-        <div className="relative text-xs text-sidebar-foreground/40">
-          MP Constituency Management System · Lok Sabha 2024–2029
-        </div>
-      </div>
-
-      {/* ── Right panel ── */}
-      <div className="flex flex-1 flex-col items-center justify-center bg-background p-6">
-        {/* Mobile logo */}
-        <div className="mb-8 flex items-center gap-3 lg:hidden">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground">
+    <main className="grid min-h-screen bg-[#f6f8f5] lg:grid-cols-[.85fr_1.15fr]">
+      <section className="hidden bg-emerald-950 p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <Link to="/" className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-300 text-emerald-950">
             <Building2 className="h-5 w-5" />
+          </span>
+          <span className="font-display text-lg font-bold">MP Connect</span>
+        </Link>
+        <div className="max-w-md">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">
+            Citizen registration
+          </p>
+          <h1 className="mt-5 font-display text-5xl font-extrabold leading-tight">
+            Your constituency services, connected.
+          </h1>
+          <p className="mt-5 leading-7 text-emerald-100/75">
+            Create a secure citizen account to access public service workflows.
+            Official, staff and volunteer access is issued separately by the MP
+            office.
+          </p>
+          <div className="mt-8 space-y-3 text-sm">
+            {[
+              "Citizen-only public registration",
+              "Protected role-based access",
+              "Secure service tracking",
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-amber-300" />
+                {item}
+              </div>
+            ))}
           </div>
-          <div className="font-display text-lg font-bold">MP Connect</div>
         </div>
-
-        <div className="w-full max-w-sm space-y-7">
-          <div className="space-y-1">
-            <h2 className="font-display text-2xl font-bold">Sign up</h2>
-            <p className="text-sm text-muted-foreground">Create an account to get started</p>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="name">Full Name</Label>
-              <div className="relative">
-                <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="John Doe"
-                  className="pl-9"
-                  {...register("name")}
-                />
-              </div>
-              {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email address</Label>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  className="pl-9"
-                  {...register("email")}
-                />
-              </div>
-              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="role">Role</Label>
-              <div className="relative">
-                {rolesLoading ? (
-                  <Button variant="outline" disabled className="w-full justify-start text-muted-foreground">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading roles...
-                  </Button>
+        <p className="text-xs text-emerald-100/50">
+          MP Constituency Management System
+        </p>
+      </section>
+      <section className="flex items-center justify-center p-5 sm:p-10">
+        <div className="w-full max-w-md rounded-2xl border border-emerald-950/10 bg-white p-6 shadow-xl shadow-emerald-950/5 sm:p-9">
+          <Link
+            to="/"
+            className="mb-8 flex items-center gap-2 font-bold text-emerald-950 lg:hidden"
+          >
+            <Building2 className="h-5 w-5" /> MP Connect
+          </Link>
+          <h2 className="font-display text-3xl font-extrabold">
+            Create citizen account
+          </h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Enter your details to access citizen services.
+          </p>
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
+            <Field label="Full name" error={errors.name?.message}>
+              <User className="field-icon" />
+              <Input
+                autoComplete="name"
+                className="pl-10"
+                {...register("name")}
+              />
+            </Field>
+            <Field label="Email address" error={errors.email?.message}>
+              <Mail className="field-icon" />
+              <Input
+                type="email"
+                autoComplete="email"
+                className="pl-10"
+                {...register("email")}
+              />
+            </Field>
+            <Field label="Password" error={errors.password?.message}>
+              <Lock className="field-icon" />
+              <Input
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                className="pl-10 pr-10"
+                {...register("password")}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-9 text-slate-400"
+                onClick={() => setShowPassword((value) => !value)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
                 ) : (
-                  <Select
-                    onValueChange={(value) => setValue("role_slug", value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select your role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.map((role) => (
-                        <SelectItem key={role.id} value={role.slug}>
-                          {role.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Eye className="h-4 w-4" />
                 )}
-              </div>
-              {errors.role_slug && <p className="text-xs text-destructive">{errors.role_slug.message}</p>}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPass ? "text" : "password"}
-                  placeholder="••••••••"
-                  className="pl-9 pr-10"
-                  {...register("password")}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  tabIndex={-1}
-                >
-                  {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="password_confirmation">Confirm Password</Label>
-              <div className="relative">
-                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="password_confirmation"
-                  type={showConfirmPass ? "text" : "password"}
-                  placeholder="••••••••"
-                  className="pl-9 pr-10"
-                  {...register("password_confirmation")}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPass((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  tabIndex={-1}
-                >
-                  {showConfirmPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.password_confirmation && <p className="text-xs text-destructive">{errors.password_confirmation.message}</p>}
-            </div>
-
-            <Button type="submit" className="w-full" disabled={isSubmitting || rolesLoading}>
+              </button>
+            </Field>
+            <Field
+              label="Confirm password"
+              error={errors.password_confirmation?.message}
+            >
+              <Lock className="field-icon" />
+              <Input
+                type="password"
+                autoComplete="new-password"
+                className="pl-10"
+                {...register("password_confirmation")}
+              />
+            </Field>
+            <p className="text-xs leading-5 text-slate-500">
+              Use 12 or more characters with uppercase, lowercase, number and
+              symbol.
+            </p>
+            <Button
+              type="submit"
+              className="h-11 w-full bg-emerald-950 hover:bg-emerald-900"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
+                  Creating account
                 </>
               ) : (
-                "Sign up"
+                "Create citizen account"
               )}
             </Button>
           </form>
-
-          <div className="text-center text-sm">
-            Already have an account?{" "}
-            <Link to="/login" className="text-primary hover:underline">
-              Log in
+          <p className="mt-6 text-center text-sm text-slate-500">
+            Already registered?{" "}
+            <Link
+              to="/login"
+              className="font-bold text-emerald-800 hover:underline"
+            >
+              Login
             </Link>
-          </div>
+          </p>
+          <p className="mt-3 text-center text-sm text-slate-500">
+            Want to serve in the field?{" "}
+            <Link
+              to="/volunteer-apply"
+              className="font-bold text-emerald-800 hover:underline"
+            >
+              Apply as a volunteer
+            </Link>
+          </p>
         </div>
-      </div>
+      </section>
+    </main>
+  );
+}
+
+function Field({
+  label,
+  error,
+  children,
+}: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative space-y-1.5">
+      <Label>{label}</Label>
+      <div className="relative">{children}</div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }
