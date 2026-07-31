@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-C7pTCAcE.js";import{a as t}from"./nav-config-Bw-Yk7K-.js";import{t as n}from"./PlaceholderPage-C5BN9Mav.js";var r=e(),i=()=>(0,r.jsx)(n,{title:`Assembly Analytics`,description:`Assembly-segment level performance and trends.`,icon:t,emptyAction:`Export`});export{i as component};

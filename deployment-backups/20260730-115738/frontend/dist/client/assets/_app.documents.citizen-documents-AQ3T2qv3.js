@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-C7pTCAcE.js";import{t}from"./file-text-5JWSUsXG.js";import{t as n}from"./PlaceholderPage-C5BN9Mav.js";var r=e(),i=()=>(0,r.jsx)(n,{title:`Citizen Documents`,description:`Aadhaar, ration cards, certificates and verifications attached to citizen profiles.`,icon:t,emptyAction:`Upload`});export{i as component};
