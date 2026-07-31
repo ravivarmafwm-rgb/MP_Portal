@@ -8,29 +8,40 @@ use App\Models\JanataDarbarSession;
 use App\Models\MeetingNote;
 use App\Models\MpTour;
 use App\Models\PublicMeeting;
+use App\Models\Citizen;
+use App\Models\Mandal;
+use App\Models\Village;
+use App\Services\GeographicScopeService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 
 class MeetingController extends Controller
 {
     // ─────────────────────────────────────────────────────────────────────────
     //  DASHBOARD STATS
     // ─────────────────────────────────────────────────────────────────────────
-    public function dashboardStats(): JsonResponse
+    public function dashboardStats(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Appointment::class);
+        $appointments = fn () => $this->scope(Appointment::query(), $request);
+        $publicMeetingQuery = fn () => $this->scope(PublicMeeting::query(), $request);
+        $tourQuery = fn () => $this->scope(MpTour::query(), $request);
+        $darbarQuery = fn () => $this->scope(JanataDarbarSession::query(), $request);
         $today = now()->toDateString();
 
-        $totalAppointments = Appointment::count();
-        $pending           = Appointment::where('status', 'pending')->count();
-        $confirmed         = Appointment::where('status', 'confirmed')->count();
-        $completed         = Appointment::where('status', 'completed')->count();
-        $publicMeetings    = PublicMeeting::where('status', 'scheduled')->count();
-        $tours             = MpTour::where('status', 'planned')->count();
-        $citizensMet       = Appointment::where('status', 'completed')->count()
-            + MpTour::sum('citizens_met');
-        $villagesVisited   = MpTour::where('status', 'completed')->sum('villages_count');
+        $totalAppointments = $appointments()->count();
+        $pending           = $appointments()->where('status', 'pending')->count();
+        $confirmed         = $appointments()->where('status', 'confirmed')->count();
+        $completed         = $appointments()->where('status', 'completed')->count();
+        $publicMeetings    = $publicMeetingQuery()->where('status', 'scheduled')->count();
+        $tours             = $tourQuery()->where('status', 'planned')->count();
+        $citizensMet       = $appointments()->where('status', 'completed')->count()
+            + $tourQuery()->sum('citizens_met');
+        $villagesVisited   = $tourQuery()->where('status', 'completed')->sum('villages_count');
 
         // Engagement score (composite)
         $totalPossible = max(1, $totalAppointments);
@@ -43,7 +54,7 @@ class MeetingController extends Controller
         ));
 
         // Today's schedule
-        $todayAppointments = Appointment::whereDate('scheduled_date', $today)
+        $todayAppointments = $appointments()->whereDate('scheduled_date', $today)
             ->whereIn('status', ['confirmed', 'pending'])
             ->orderBy('scheduled_time')
             ->limit(10)
@@ -61,7 +72,7 @@ class MeetingController extends Controller
                 },
             ]);
 
-        $todayMeetings = PublicMeeting::whereDate('meeting_date', $today)
+        $todayMeetings = $publicMeetingQuery()->whereDate('meeting_date', $today)
             ->limit(5)
             ->get()
             ->map(fn($m) => [
@@ -81,13 +92,13 @@ class MeetingController extends Controller
             $d = now()->subDays($i);
             $weeklyTrend[] = [
                 'd'         => $d->format('D'),
-                'requested' => Appointment::whereDate('requested_date', $d)->count(),
-                'completed' => Appointment::whereDate('scheduled_date', $d)->where('status', 'completed')->count(),
+                'requested' => $appointments()->whereDate('requested_date', $d)->count(),
+                'completed' => $appointments()->whereDate('scheduled_date', $d)->where('status', 'completed')->count(),
             ];
         }
 
         // Appointment category distribution
-        $byCategory = Appointment::selectRaw('category, COUNT(*) as count')
+        $byCategory = $appointments()->selectRaw('category, COUNT(*) as count')
             ->groupBy('category')
             ->orderByDesc('count')
             ->limit(6)
@@ -95,7 +106,7 @@ class MeetingController extends Controller
             ->map(fn($r) => ['name' => ucfirst($r->category), 'value' => (int)$r->count]);
 
         // Village engagement  
-        $byVillage = Appointment::selectRaw('citizen_village, COUNT(*) as count')
+        $byVillage = $appointments()->selectRaw('citizen_village, COUNT(*) as count')
             ->whereNotNull('citizen_village')
             ->groupBy('citizen_village')
             ->orderByDesc('count')
@@ -104,7 +115,7 @@ class MeetingController extends Controller
             ->map(fn($r) => ['name' => $r->citizen_village, 'value' => (int)$r->count]);
 
         // Upcoming events (next 14 days)
-        $upcomingAppointments = Appointment::where('scheduled_date', '>=', $today)
+        $upcomingAppointments = $appointments()->where('scheduled_date', '>=', $today)
             ->where('scheduled_date', '<=', now()->addDays(14)->toDateString())
             ->whereIn('status', ['confirmed', 'pending'])
             ->orderBy('scheduled_date')
@@ -122,7 +133,7 @@ class MeetingController extends Controller
                 'tone'  => 'bg-primary/10 text-primary',
             ]);
 
-        $upcomingPublicMeetings = PublicMeeting::where('meeting_date', '>=', $today)
+        $upcomingPublicMeetings = $publicMeetingQuery()->where('meeting_date', '>=', $today)
             ->where('status', 'scheduled')
             ->orderBy('meeting_date')
             ->limit(5)
@@ -138,7 +149,7 @@ class MeetingController extends Controller
                 'tone'  => 'bg-info/10 text-info',
             ]);
 
-        $upcomingTours = MpTour::where('start_date', '>=', $today)
+        $upcomingTours = $tourQuery()->where('start_date', '>=', $today)
             ->where('status', 'planned')
             ->orderBy('start_date')
             ->limit(3)
@@ -161,7 +172,7 @@ class MeetingController extends Controller
             ->values();
 
         // Recent Janata Darbar sessions
-        $recentJD = JanataDarbarSession::orderByDesc('session_date')->limit(4)->get();
+        $recentJD = $darbarQuery()->orderByDesc('session_date')->limit(4)->get();
 
         return response()->json([
             'kpis' => [
@@ -169,7 +180,7 @@ class MeetingController extends Controller
                 'pending'            => $pending,
                 'confirmed'          => $confirmed,
                 'completed'          => $completed,
-                'public_meetings'    => $publicMeetings + PublicMeeting::count(),
+                'public_meetings'    => $publicMeetings,
                 'tours_planned'      => $tours,
                 'citizens_met'       => $citizensMet,
                 'villages_visited'   => $villagesVisited,
@@ -190,7 +201,9 @@ class MeetingController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     public function appointments(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Appointment::class);
         $query = Appointment::with(['citizen', 'village', 'mandal']);
+        $this->scope($query, $request);
 
         if ($s = $request->get('search')) {
             $query->where(function ($q) use ($s) {
@@ -229,22 +242,24 @@ class MeetingController extends Controller
         ]);
     }
 
-    public function appointmentStats(): JsonResponse
+    public function appointmentStats(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Appointment::class);
+        $appointments = fn () => $this->scope(Appointment::query(), $request);
         return response()->json([
-            'total'       => Appointment::count(),
-            'pending'     => Appointment::where('status', 'pending')->count(),
-            'confirmed'   => Appointment::where('status', 'confirmed')->count(),
-            'completed'   => Appointment::where('status', 'completed')->count(),
-            'cancelled'   => Appointment::where('status', 'cancelled')->count(),
-            'today'       => Appointment::whereDate('scheduled_date', now())->count(),
-            'this_week'   => Appointment::whereBetween('scheduled_date', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-            'follow_up_pending' => Appointment::where('follow_up_required', true)->where('follow_up_completed', false)->count(),
-            'avg_satisfaction' => round(Appointment::whereNotNull('satisfaction_rating')->avg('satisfaction_rating') ?? 0, 1),
+            'total'       => $appointments()->count(),
+            'pending'     => $appointments()->where('status', 'pending')->count(),
+            'confirmed'   => $appointments()->where('status', 'confirmed')->count(),
+            'completed'   => $appointments()->where('status', 'completed')->count(),
+            'cancelled'   => $appointments()->where('status', 'cancelled')->count(),
+            'today'       => $appointments()->whereDate('scheduled_date', now())->count(),
+            'this_week'   => $appointments()->whereBetween('scheduled_date', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'follow_up_pending' => $appointments()->where('follow_up_required', true)->where('follow_up_completed', false)->count(),
+            'avg_satisfaction' => round($appointments()->whereNotNull('satisfaction_rating')->avg('satisfaction_rating') ?? 0, 1),
         ]);
     }
 
-    public function showAppointment(string $id): JsonResponse
+    public function showAppointment(Request $request, string $id): JsonResponse
     {
         $appointment = Appointment::with([
             'citizen.addresses.village',
@@ -257,12 +272,14 @@ class MeetingController extends Controller
             'assignedOfficer',
             'notes',
         ])->findOrFail($id);
+        $this->authorize('view', $appointment);
 
         return response()->json($appointment);
     }
 
     public function storeAppointment(Request $request): JsonResponse
     {
+        $this->authorize('create', Appointment::class);
         $data = $request->validate([
             'citizen_name'     => 'required|string|max:200',
             'citizen_mobile'   => 'nullable|string|max:15',
@@ -279,6 +296,10 @@ class MeetingController extends Controller
             'requested_date'   => 'required|date',
             'requested_time'   => 'nullable|date_format:H:i',
         ]);
+        if (!empty($data['citizen_id'])) {
+            abort_unless(app(GeographicScopeService::class)->allows($request->user(), Citizen::findOrFail($data['citizen_id'])), 403);
+        }
+        $data = $this->normalizeScope($data, $request, Appointment::class);
 
         $count = Appointment::count() + 1;
         $appointment = Appointment::create(array_merge($data, [
@@ -294,6 +315,7 @@ class MeetingController extends Controller
     public function updateAppointment(Request $request, string $id): JsonResponse
     {
         $appointment = Appointment::findOrFail($id);
+        $this->authorize('update', $appointment);
         $data = $request->validate([
             'status'           => 'sometimes|in:pending,confirmed,rescheduled,completed,cancelled,no_show',
             'scheduled_date'   => 'nullable|date',
@@ -317,7 +339,9 @@ class MeetingController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     public function publicMeetings(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', PublicMeeting::class);
         $query = PublicMeeting::with(['village', 'mandal', 'constituency']);
+        $this->scope($query, $request);
 
         if ($s = $request->get('search')) {
             $query->where('title', 'ilike', "%$s%");
@@ -345,6 +369,7 @@ class MeetingController extends Controller
 
     public function storePublicMeeting(Request $request): JsonResponse
     {
+        $this->authorize('create', PublicMeeting::class);
         $data = $request->validate([
             'title'            => 'required|string|max:300',
             'description'      => 'nullable|string',
@@ -358,6 +383,7 @@ class MeetingController extends Controller
             'agenda_items'     => 'nullable|array',
             'chief_guest'      => 'nullable|string|max:200',
         ]);
+        $data = $this->normalizeScope($data, $request, PublicMeeting::class);
 
         $count = PublicMeeting::count() + 1;
         $meeting = PublicMeeting::create(array_merge($data, [
@@ -374,7 +400,9 @@ class MeetingController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     public function tours(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', MpTour::class);
         $query = MpTour::with('constituency');
+        $this->scope($query, $request);
 
         if ($status = $request->get('status')) {
             $query->where('status', $status);
@@ -396,6 +424,7 @@ class MeetingController extends Controller
 
     public function storeTour(Request $request): JsonResponse
     {
+        $this->authorize('create', MpTour::class);
         $data = $request->validate([
             'title'       => 'required|string|max:300',
             'objectives'  => 'nullable|string',
@@ -404,6 +433,7 @@ class MeetingController extends Controller
             'end_date'    => 'nullable|date|after_or_equal:start_date',
             'villages_count' => 'nullable|integer|min:0',
         ]);
+        $data = $this->normalizeScope($data, $request, MpTour::class);
 
         $count = MpTour::count() + 1;
         $tour = MpTour::create(array_merge($data, [
@@ -420,7 +450,9 @@ class MeetingController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     public function janataDarbars(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', JanataDarbarSession::class);
         $query = JanataDarbarSession::with(['constituency', 'mandal', 'village']);
+        $this->scope($query, $request);
 
         if ($status = $request->get('status')) {
             $query->where('status', $status);
@@ -442,6 +474,7 @@ class MeetingController extends Controller
 
     public function storeJanataDarbar(Request $request): JsonResponse
     {
+        $this->authorize('create', JanataDarbarSession::class);
         $data = $request->validate([
             'title'            => 'required|string|max:300',
             'venue'            => 'required|string|max:300',
@@ -451,6 +484,7 @@ class MeetingController extends Controller
             'village_id'       => 'nullable|uuid|exists:villages,id',
             'max_registrations'=> 'nullable|integer|min:10',
         ]);
+        $data = $this->normalizeScope($data, $request, JanataDarbarSession::class);
 
         $count = JanataDarbarSession::count() + 1;
         $session = JanataDarbarSession::create(array_merge($data, [
@@ -467,10 +501,12 @@ class MeetingController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     public function calendar(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Appointment::class);
         $start = $request->get('start', now()->startOfMonth()->toDateString());
         $end   = $request->get('end',   now()->endOfMonth()->toDateString());
 
-        $appointments = Appointment::whereBetween('scheduled_date', [$start, $end])
+        $appointments = $this->scope(Appointment::query(), $request)
+            ->whereBetween('scheduled_date', [$start, $end])
             ->get()
             ->map(fn($a) => [
                 'id'      => $a->id,
@@ -483,7 +519,8 @@ class MeetingController extends Controller
                 'color'   => match($a->priority) { 'urgent' => '#ef4444', 'high' => '#f59e0b', default => '#3b82f6' },
             ]);
 
-        $publicMeetings = PublicMeeting::whereBetween('meeting_date', [$start, $end])
+        $publicMeetings = $this->scope(PublicMeeting::query(), $request)
+            ->whereBetween('meeting_date', [$start, $end])
             ->get()
             ->map(fn($m) => [
                 'id'    => $m->id,
@@ -495,7 +532,8 @@ class MeetingController extends Controller
                 'color' => '#6366f1',
             ]);
 
-        $tours = MpTour::whereBetween('start_date', [$start, $end])
+        $tours = $this->scope(MpTour::query(), $request)
+            ->whereBetween('start_date', [$start, $end])
             ->get()
             ->map(fn($t) => [
                 'id'    => $t->id,
@@ -507,7 +545,8 @@ class MeetingController extends Controller
                 'color' => '#10b981',
             ]);
 
-        $jdSessions = JanataDarbarSession::whereBetween('session_date', [$start, $end])
+        $jdSessions = $this->scope(JanataDarbarSession::query(), $request)
+            ->whereBetween('session_date', [$start, $end])
             ->get()
             ->map(fn($s) => [
                 'id'    => $s->id,
@@ -532,33 +571,37 @@ class MeetingController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     //  ENGAGEMENT ANALYTICS
     // ─────────────────────────────────────────────────────────────────────────
-    public function engagementAnalytics(): JsonResponse
+    public function engagementAnalytics(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Appointment::class);
+        $appointments = fn() => $this->scope(Appointment::query(), $request);
+        $publicMeetings = fn() => $this->scope(PublicMeeting::query(), $request);
+
         // Monthly appointment trend (last 6 months)
         $monthlyTrend = [];
         for ($i = 5; $i >= 0; $i--) {
             $month = now()->subMonths($i);
             $monthlyTrend[] = [
                 'month'     => $month->format('M Y'),
-                'appointments' => Appointment::whereYear('requested_date', $month->year)
+                'appointments' => $appointments()->whereYear('requested_date', $month->year)
                     ->whereMonth('requested_date', $month->month)->count(),
-                'completed' => Appointment::where('status', 'completed')
+                'completed' => $appointments()->where('status', 'completed')
                     ->whereYear('scheduled_date', $month->year)
                     ->whereMonth('scheduled_date', $month->month)->count(),
-                'public_meetings' => PublicMeeting::whereYear('meeting_date', $month->year)
+                'public_meetings' => $publicMeetings()->whereYear('meeting_date', $month->year)
                     ->whereMonth('meeting_date', $month->month)->count(),
             ];
         }
 
         // Appointment by purpose category
-        $byCategory = Appointment::selectRaw('category, COUNT(*) as count')
+        $byCategory = $appointments()->selectRaw('category, COUNT(*) as count')
             ->groupBy('category')
             ->orderByDesc('count')
             ->get()
             ->map(fn($r) => ['name' => ucfirst($r->category), 'value' => (int)$r->count]);
 
         // By village
-        $byVillage = Appointment::selectRaw('citizen_village as village, COUNT(*) as count')
+        $byVillage = $appointments()->selectRaw('citizen_village as village, COUNT(*) as count')
             ->whereNotNull('citizen_village')
             ->groupBy('citizen_village')
             ->orderByDesc('count')
@@ -567,7 +610,7 @@ class MeetingController extends Controller
             ->map(fn($r) => ['village' => $r->village, 'count' => (int)$r->count]);
 
         // By mandal
-        $byMandal = Appointment::selectRaw('citizen_mandal as mandal, COUNT(*) as count')
+        $byMandal = $appointments()->selectRaw('citizen_mandal as mandal, COUNT(*) as count')
             ->whereNotNull('citizen_mandal')
             ->groupBy('citizen_mandal')
             ->orderByDesc('count')
@@ -576,7 +619,7 @@ class MeetingController extends Controller
             ->map(fn($r) => ['mandal' => $r->mandal, 'count' => (int)$r->count]);
 
         // Public meeting attendance trend
-        $meetingAttendance = PublicMeeting::where('status', 'completed')
+        $meetingAttendance = $publicMeetings()->where('status', 'completed')
             ->orderByDesc('meeting_date')
             ->limit(8)
             ->get()
@@ -592,7 +635,7 @@ class MeetingController extends Controller
         for ($r = 1; $r <= 5; $r++) {
             $ratings[] = [
                 'rating' => $r . '★',
-                'count'  => Appointment::where('satisfaction_rating', $r)->count(),
+                'count'  => $appointments()->where('satisfaction_rating', $r)->count(),
             ];
         }
 
@@ -603,8 +646,50 @@ class MeetingController extends Controller
             'by_mandal'          => $byMandal,
             'meeting_attendance' => $meetingAttendance,
             'satisfaction'       => $ratings,
-            'avg_satisfaction'   => round(Appointment::whereNotNull('satisfaction_rating')->avg('satisfaction_rating') ?? 0, 1),
-            'follow_up_pending'  => Appointment::where('follow_up_required', true)->where('follow_up_completed', false)->count(),
+            'avg_satisfaction'   => round($appointments()->whereNotNull('satisfaction_rating')->avg('satisfaction_rating') ?? 0, 1),
+            'follow_up_pending'  => $appointments()->where('follow_up_required', true)->where('follow_up_completed', false)->count(),
         ]);
+    }
+
+    private function scope(Builder $query, Request $request): Builder
+    {
+        return app(GeographicScopeService::class)->applyHierarchicalResources($query, $request->user());
+    }
+
+    private function normalizeScope(array $data, Request $request, string $modelClass): array
+    {
+        $hierarchy = [];
+        if (!empty($data['village_id'])) {
+            $village = Village::with('mandal.assemblyConstituency')->findOrFail($data['village_id']);
+            if (!empty($data['mandal_id']) && $data['mandal_id'] !== $village->mandal_id) {
+                throw ValidationException::withMessages(['mandal_id' => ['The mandal does not contain the selected village.']]);
+            }
+            $hierarchy = [
+                'village_id' => $village->id,
+                'mandal_id' => $village->mandal_id,
+                'assembly_constituency_id' => $village->mandal?->assembly_constituency_id,
+                'constituency_id' => $village->mandal?->assemblyConstituency?->constituency_id,
+            ];
+        } elseif (!empty($data['mandal_id'])) {
+            $mandal = Mandal::with('assemblyConstituency')->findOrFail($data['mandal_id']);
+            $hierarchy = [
+                'mandal_id' => $mandal->id,
+                'assembly_constituency_id' => $mandal->assembly_constituency_id,
+                'constituency_id' => $mandal->assemblyConstituency?->constituency_id,
+            ];
+        } else {
+            foreach (['constituency_id', 'assembly_constituency_id', 'mandal_id', 'village_id'] as $field) {
+                if ($request->user()->{$field}) $hierarchy[$field] = $request->user()->{$field};
+            }
+        }
+
+        $model = new $modelClass();
+        foreach ($hierarchy as $field => $value) {
+            if ($model->isFillable($field)) $data[$field] = $value;
+        }
+        $model->fill($data);
+        abort_unless(app(GeographicScopeService::class)->allowsHierarchicalResource($request->user(), $model), 403, 'The selected location is outside your assigned area.');
+
+        return $data;
     }
 }

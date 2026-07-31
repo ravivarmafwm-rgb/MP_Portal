@@ -30,7 +30,10 @@ function OfficerDashboardPage() {
 
   return (
     <RoleGuard route="/officer">
-      <PageHeader title="Government Officer Dashboard" description="Grievance and project oversight" />
+      <PageHeader
+        title="Government Officer Dashboard"
+        description="Grievance and project oversight"
+      />
       <div className="space-y-6 p-4 md:p-8">
         {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -40,18 +43,48 @@ function OfficerDashboardPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard label="Total Grievances" value={grievances?.total ?? 0} icon={MessageSquareWarning} tone="destructive" index={0} />
-            <KpiCard label="Pending" value={grievances?.pending ?? 0} icon={MessageSquareWarning} tone="warning" index={1} />
-            <KpiCard label="Resolved" value={grievances?.resolved ?? 0} icon={MessageSquareWarning} tone="success" index={2} />
-            <KpiCard label="Active Projects" value={projects?.in_progress ?? projects?.active ?? 0} icon={HardHat} tone="info" index={3} />
+            <KpiCard
+              label="Total Grievances"
+              value={grievances?.total ?? 0}
+              icon={MessageSquareWarning}
+              tone="destructive"
+              index={0}
+            />
+            <KpiCard
+              label="Pending"
+              value={grievances?.pending ?? 0}
+              icon={MessageSquareWarning}
+              tone="warning"
+              index={1}
+            />
+            <KpiCard
+              label="Resolved"
+              value={grievances?.resolved ?? 0}
+              icon={MessageSquareWarning}
+              tone="success"
+              index={2}
+            />
+            <KpiCard
+              label="Active Projects"
+              value={projects?.in_progress ?? projects?.active ?? 0}
+              icon={HardHat}
+              tone="info"
+              index={3}
+            />
           </div>
         )}
         <Card className="p-6">
           <h3 className="font-bold mb-4">Quick Actions</h3>
           <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline" size="sm"><Link to="/grievances/list">View Grievances</Link></Button>
-            <Button asChild variant="outline" size="sm"><Link to="/grievances/dashboard">Grievance Center</Link></Button>
-            <Button asChild variant="outline" size="sm"><Link to="/projects/dashboard">Projects</Link></Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/grievances/list">View Grievances</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/grievances/dashboard">Grievance Center</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/projects/dashboard">Projects</Link>
+            </Button>
           </div>
         </Card>
       </div>

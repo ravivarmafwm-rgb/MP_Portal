@@ -1,118 +1,167 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import { Trophy, Clock, CheckCircle2, XCircle, Building2 } from "lucide-react";
+import {
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  IndianRupee,
+  Users,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { departmentPerformance, schemes } from "@/lib/scheme-data";
-import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { fetchSchemeAnalytics, fetchSchemeStats } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/schemes/performance")({
-  head: () => ({ meta: [{ title: "Scheme Performance Center" }, { name: "description", content: "Department efficiency and scheme performance analytics." }] }),
+  head: () => ({ meta: [{ title: "Scheme Performance" }] }),
   component: PerformancePage,
 });
 
-const overall = [
-  { l: "Approval Rate", v: "82%", icon: CheckCircle2, tone: "bg-success/10 text-success" },
-  { l: "Rejection Rate", v: "7%", icon: XCircle, tone: "bg-destructive/10 text-destructive" },
-  { l: "Avg Processing", v: "11 days", icon: Clock, tone: "bg-warning/15 text-warning" },
-  { l: "Benefit Distributed", v: "₹482 Cr", icon: Trophy, tone: "bg-primary/10 text-primary" },
-];
-
 function PerformancePage() {
-  const ranked = [...departmentPerformance].sort((a, b) => b.slaCompliance - a.slaCompliance);
-  const topSchemes = [...schemes].sort((a, b) => b.beneficiaries - a.beneficiaries).slice(0, 6);
+  const stats = useQuery({
+    queryKey: ["scheme-stats"],
+    queryFn: fetchSchemeStats,
+  });
+  const analytics = useQuery({
+    queryKey: ["scheme-analytics"],
+    queryFn: fetchSchemeAnalytics,
+  });
+  if (stats.isLoading || analytics.isLoading) return <Loading />;
+  if (stats.isError || analytics.isError)
+    return (
+      <State message="Scheme performance could not be loaded. Please retry." />
+    );
+  const totals = stats.data!;
+  const approvalRate = totals.total_applications
+    ? Math.round((totals.approved / totals.total_applications) * 100)
+    : 0;
+  const departments = analytics
+    .data!.by_department.map((item) => ({
+      ...item,
+      approvalRate: item.applications
+        ? Math.round((item.approved / item.applications) * 100)
+        : 0,
+    }))
+    .sort((a, b) => b.approvalRate - a.approvalRate);
+  const schemes = [...analytics.data!.by_scheme].sort(
+    (a, b) => b.beneficiaries - a.beneficiaries,
+  );
 
   return (
     <>
-      <PageHeader title="Scheme Performance Center" description="Approval, rejection, processing time and department efficiency across all welfare schemes." />
+      <PageHeader
+        title="Scheme Performance"
+        description="Performance calculated from recorded applications and beneficiary disbursements."
+      />
       <div className="space-y-6 p-4 md:p-8">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {overall.map((k, i) => (
-            <motion.div key={k.l} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <Card className="p-4">
-                <div className={cn("inline-grid h-9 w-9 place-items-center rounded-lg", k.tone)}><k.icon className="h-4 w-4" /></div>
-                <div className="mt-3 text-[11px] uppercase tracking-wider text-muted-foreground">{k.l}</div>
-                <div className="mt-1 font-display text-xl font-bold tabular-nums">{k.v}</div>
-              </Card>
-            </motion.div>
-          ))}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Metric
+            label="Approval rate"
+            value={`${approvalRate}%`}
+            icon={CheckCircle2}
+          />
+          <Metric
+            label="Active beneficiaries"
+            value={totals.total_beneficiaries.toLocaleString()}
+            icon={Users}
+          />
+          <Metric
+            label="Benefits distributed"
+            value={`₹${totals.total_benefit_distributed.toLocaleString("en-IN")}`}
+            icon={IndianRupee}
+          />
         </div>
-
         <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-base font-bold inline-flex items-center gap-2"><Building2 className="h-4 w-4" /> Department Rankings</h3>
-            <Badge variant="secondary" className="bg-success/10 text-success">By SLA Compliance</Badge>
-          </div>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="p-2 text-left">Rank</th>
-                  <th className="p-2 text-left">Department</th>
-                  <th className="p-2 text-right">Applications</th>
-                  <th className="p-2 text-right">Approval %</th>
-                  <th className="p-2 text-right">Avg Days</th>
-                  <th className="p-2 text-right">SLA</th>
-                  <th className="p-2 text-left">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ranked.map((d, i) => (
-                  <tr key={d.name} className="border-t border-border/40">
-                    <td className="p-2">
-                      <div className={cn("grid h-7 w-7 place-items-center rounded-full font-bold text-xs",
-                        i === 0 ? "bg-warning/20 text-warning" : i === 1 ? "bg-muted text-foreground" : i === 2 ? "bg-orange-500/15 text-orange-600" : "bg-muted/40 text-muted-foreground")}>
-                        {i + 1}
-                      </div>
-                    </td>
-                    <td className="p-2 font-medium">{d.name}</td>
-                    <td className="p-2 text-right tabular-nums">{d.applications.toLocaleString()}</td>
-                    <td className="p-2 text-right tabular-nums font-semibold text-success">{d.approvalRate}%</td>
-                    <td className="p-2 text-right tabular-nums">{d.avgDays}</td>
-                    <td className="p-2 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Progress value={d.slaCompliance} className="h-1.5 w-20" />
-                        <span className="tabular-nums font-semibold">{d.slaCompliance}%</span>
-                      </div>
-                    </td>
-                    <td className="p-2">
-                      <Badge variant="secondary" className={cn("text-[10px]",
-                        d.slaCompliance >= 90 ? "bg-success/10 text-success" :
-                        d.slaCompliance >= 80 ? "bg-info/10 text-info" :
-                        d.slaCompliance >= 70 ? "bg-warning/15 text-warning" : "bg-destructive/10 text-destructive")}>
-                        {d.slaCompliance >= 90 ? "Excellent" : d.slaCompliance >= 80 ? "Good" : d.slaCompliance >= 70 ? "Average" : "Needs Attention"}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <h3 className="font-display text-base font-bold inline-flex items-center gap-2"><Trophy className="h-4 w-4 text-warning" /> Top-Performing Schemes</h3>
-          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {topSchemes.map((s, i) => (
-              <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} className="rounded-lg border border-border/70 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-lg bg-muted text-xl">{s.icon}</div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold">{s.name}</div>
-                    <div className="text-[10px] text-muted-foreground">{s.department}</div>
+          <h2 className="flex items-center gap-2 font-semibold">
+            <Building2 className="h-4 w-4" /> Department performance
+          </h2>
+          {departments.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              No application performance has been recorded.
+            </p>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {departments.map((department) => (
+                <div key={department.id ?? "unassigned"}>
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span>{department.name ?? "Unassigned department"}</span>
+                    <span>
+                      {department.approved.toLocaleString()} /{" "}
+                      {department.applications.toLocaleString()} approved
+                    </span>
                   </div>
+                  <Progress value={department.approvalRate} className="h-2" />
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <div className="rounded bg-muted/40 p-2"><div className="text-muted-foreground">Beneficiaries</div><div className="font-bold tabular-nums">{s.beneficiaries.toLocaleString()}</div></div>
-                  <div className="rounded bg-muted/40 p-2"><div className="text-muted-foreground">Growth</div><div className="font-bold tabular-nums text-success">+{s.growthPct}%</div></div>
+              ))}
+            </div>
+          )}
+        </Card>
+        <Card className="p-5">
+          <h2 className="font-semibold">
+            Beneficiaries and distribution by scheme
+          </h2>
+          {schemes.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              No beneficiary records are available.
+            </p>
+          ) : (
+            <div className="mt-4 divide-y">
+              {schemes.map((item) => (
+                <div
+                  key={item.scheme_id}
+                  className="grid gap-1 py-3 text-sm sm:grid-cols-3"
+                >
+                  <span className="font-medium">{item.scheme.name}</span>
+                  <span>
+                    {item.beneficiaries.toLocaleString()} beneficiaries
+                  </span>
+                  <span className="sm:text-right">
+                    ₹{Number(item.distributed).toLocaleString("en-IN")}
+                  </span>
                 </div>
-              </motion.div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
     </>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: typeof Users;
+}) {
+  return (
+    <Card className="p-5">
+      <Icon className="h-5 w-5 text-primary" />
+      <div className="mt-3 text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-2xl font-bold tabular-nums">{value}</div>
+    </Card>
+  );
+}
+function Loading() {
+  return (
+    <div className="space-y-4 p-8">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={i} className="h-24" />
+      ))}
+    </div>
+  );
+}
+function State({ message }: { message: string }) {
+  return (
+    <div className="grid min-h-[50vh] place-items-center p-8 text-center text-muted-foreground">
+      <div>
+        <AlertCircle className="mx-auto mb-3 h-8 w-8" />
+        {message}
+      </div>
+    </div>
   );
 }

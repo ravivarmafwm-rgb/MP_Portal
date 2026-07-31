@@ -7,3 +7,56 @@ REQUIRED SECURITY ACTIONS
 5. Change any accounts created with predictable seeded passwords.
 
 The frontend deployment bundle was checked for the removed secret variable, service-role markers, and database/backend secret names. Never place Laravel APP_KEY, database passwords, private tokens, or service-role keys in frontend environment files.
+# MP Constituency Management System — Deployment Security Actions
+
+## Runtime prerequisites
+
+- PHP 8.3 or newer (production should use the currently supported 8.3/8.4 patch release).
+- Composer 2.x for build-time dependency management.
+- Node.js 20 LTS or newer and npm for frontend build-time only; Node is not required to serve the static frontend.
+- PostgreSQL with the Laravel database driver.
+- Required PHP extensions: Ctype, cURL, DOM, Fileinfo, Filter, Hash, Mbstring, OpenSSL, PCRE, PDO, pdo_pgsql, Session, Tokenizer, XML, and JSON.
+
+## Filesystem and permissions
+
+- The web server document root must point to `backend-public-html/public`, never the Laravel project root.
+- The PHP-FPM user must read the deployment tree and write only to `storage/app`, `storage/framework`, `storage/framework/cache`, `storage/framework/sessions`, `storage/framework/views`, and `bootstrap/cache`.
+- Keep `storage/logs` outside this artifact or create it with restricted permissions at deployment time.
+- Use `chmod 750` for directories and `chmod 640` for files where compatible with the hosting platform; never make the project tree world-writable.
+- Keep `.env` outside source control and create it on the server from `.env.example` with production secrets.
+
+## Scheduled work
+
+- Laravel scheduler (every minute): `* * * * * cd /var/www/mp-dashboard && php artisan schedule:run >> /dev/null 2>&1`
+- Queue worker (Supervisor/systemd): `php artisan queue:work --sleep=3 --tries=3 --timeout=120`
+- Configure a process monitor and restart workers after deployments: `php artisan queue:restart`.
+
+## Required environment variables
+
+Set and review at minimum: `APP_NAME`, `APP_ENV=production`, `APP_KEY`, `APP_DEBUG=false`, `APP_URL`, `FRONTEND_URL`, `LOG_CHANNEL`, `LOG_LEVEL`, `DB_CONNECTION=pgsql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `SESSION_DRIVER`, `SESSION_SECURE_COOKIE=true`, `SESSION_HTTP_ONLY=true`, `SESSION_SAME_SITE=lax`, `SANCTUM_STATEFUL_DOMAINS`, `SANCTUM_EXPIRATION`, `QUEUE_CONNECTION`, `CACHE_STORE`, `FILESYSTEM_DISK=local`, and all configured communication/provider credentials.
+
+Do not copy development `.env` files into the artifact. Rotate any credentials that may have appeared in local environments.
+
+## Deployment commands
+
+1. Upload `backend-public-html` outside the public web root and point the web root to its `public` directory.
+2. Create the production `.env` and verify `APP_KEY`, database, cookie, CORS, queue, storage, and provider settings.
+3. Run `php artisan migrate --force` during the approved maintenance window.
+4. Run `php artisan optimize:clear`, then `php artisan config:cache`, `php artisan route:cache`, and `php artisan view:cache`.
+5. Ensure storage directories and `bootstrap/cache` are writable by PHP-FPM.
+6. Start/restart queue workers and verify `php artisan schedule:run`.
+7. Deploy the contents of `frontend-public-html` to the static host/CDN and configure SPA fallback to `index.html`.
+
+## Restart and rollback
+
+- Restart PHP-FPM and the web server after runtime/configuration changes.
+- Run `php artisan queue:restart` after every backend deployment.
+- Keep the previous release directory for rollback; do not delete user-uploaded storage during rollback.
+
+## TLS and security
+
+- Require HTTPS, HSTS, secure cookies, and modern TLS configuration.
+- Restrict database access to the application network; do not expose PostgreSQL publicly.
+- Place rate limiting/WAF controls in front of public authentication, registration, upload, and webhook endpoints.
+- Configure encrypted, tested backups for PostgreSQL and private document storage; test restoration regularly.
+- Monitor authentication failures, authorization denials, queue failures, storage failures, and disk usage.

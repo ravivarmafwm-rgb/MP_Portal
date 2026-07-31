@@ -46,6 +46,11 @@ export const ROUTE_ROLE_ACCESS: Record<string, RoleSlug[]> = {
   "/officer": ["super-admin", "government-officer"],
   "/citizen": ["super-admin", "citizen"],
   "/citizens/create-profile": ["super-admin", "volunteer"],
+  "/volunteers/applications": [
+    "super-admin",
+    "mp-staff",
+    "constituency-coordinator",
+  ],
 };
 
 export function getDashboardPath(roleSlug: string): string {
@@ -54,7 +59,8 @@ export function getDashboardPath(roleSlug: string): string {
 
 export function canAccessRoute(roleSlug: string, pathname: string): boolean {
   const exact = ROUTE_ROLE_ACCESS[pathname];
-  if (exact) return exact.includes(roleSlug as RoleSlug) || roleSlug === "super-admin";
+  if (exact)
+    return exact.includes(roleSlug as RoleSlug) || roleSlug === "super-admin";
 
   for (const [prefix, roles] of Object.entries(ROUTE_ROLE_ACCESS)) {
     if (pathname === prefix || pathname.startsWith(prefix + "/")) {
@@ -69,9 +75,35 @@ export function canAccessRoute(roleSlug: string, pathname: string): boolean {
 export const ROLE_NAV_ACCESS: Record<string, string[]> = {
   "super-admin": ["*"],
   mp: ["*"],
-  mla: ["Dashboard", "Citizens", "Grievances", "Projects", "Surveys", "Volunteers", "Analytics"],
-  "mp-staff": ["Dashboard", "Citizens", "Schemes", "Grievances", "Projects", "Surveys", "Volunteers", "Meetings", "Documents", "Communication Hub"],
-  "constituency-coordinator": ["Dashboard", "Citizens", "Grievances", "Volunteers", "Surveys", "Meetings"],
+  mla: [
+    "Dashboard",
+    "Citizens",
+    "Grievances",
+    "Projects",
+    "Surveys",
+    "Volunteers",
+    "Analytics",
+  ],
+  "mp-staff": [
+    "Dashboard",
+    "Citizens",
+    "Schemes",
+    "Grievances",
+    "Projects",
+    "Surveys",
+    "Volunteers",
+    "Meetings",
+    "Documents",
+    "Communication Hub",
+  ],
+  "constituency-coordinator": [
+    "Dashboard",
+    "Citizens",
+    "Grievances",
+    "Volunteers",
+    "Surveys",
+    "Meetings",
+  ],
   "assembly-coordinator": ["Dashboard", "Citizens", "Grievances", "Volunteers"],
   "mandal-coordinator": ["Dashboard", "Citizens", "Grievances", "Volunteers"],
   "village-coordinator": ["Dashboard", "Citizens", "Grievances", "Volunteers"],
@@ -81,7 +113,10 @@ export const ROLE_NAV_ACCESS: Record<string, string[]> = {
   staff: ["Dashboard", "Citizens", "Grievances"],
 };
 
-export function canSeeNavSection(roleSlug: string, sectionTitle: string): boolean {
+export function canSeeNavSection(
+  roleSlug: string,
+  sectionTitle: string,
+): boolean {
   const allowed = ROLE_NAV_ACCESS[roleSlug] ?? ROLE_NAV_ACCESS.staff;
   if (allowed.includes("*")) return true;
   return allowed.includes(sectionTitle);

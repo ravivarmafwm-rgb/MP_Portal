@@ -1,20 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BarChart3 } from "lucide-react";
-import { PlaceholderPage } from "@/components/layout/PlaceholderPage";
-
+import { AnalyticsReportPage } from "@/components/analytics/AnalyticsReportPage";
+import { fetchParliamentaryAnalytics } from "@/lib/api";
 export const Route = createFileRoute("/_app/analytics/")({
-  head: () => ({
-    meta: [
-      { title: "Analytics — MP Constituency Platform" },
-      { name: "description", content: "Drill down from constituency to village with rich visual analytics." },
-    ],
-  }),
-  component: () => (
-    <PlaceholderPage
-      title="Analytics · Overview"
-      description="Drill down from constituency to village with rich visual analytics."
-      icon={BarChart3}
-      emptyAction="New Report"
-    />
-  ),
+  loader: () => fetchParliamentaryAnalytics("constituency"),
+  component: Page,
 });
+function Page() {
+  return (
+    <AnalyticsReportPage
+      report={Route.useLoaderData()}
+      title="Parliamentary Analytics"
+      description="Scoped constituency metrics with assembly, mandal, village and booth drill-downs."
+    />
+  );
+}

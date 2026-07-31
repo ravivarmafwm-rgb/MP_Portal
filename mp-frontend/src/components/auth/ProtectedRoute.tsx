@@ -10,7 +10,10 @@ interface ProtectedRouteProps {
 /**
  * Blocks rendering until auth is resolved; redirects unauthenticated users to login.
  */
-export function ProtectedRoute({ children, fallback = "/login" }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  fallback = "/login",
+}: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {

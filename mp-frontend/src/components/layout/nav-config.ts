@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type NavChild = { title: string; url: string };
+export type NavChild = { title: string; url: string; roles?: string[] };
 export type NavSection = {
   title: string;
   url: string;
@@ -78,6 +78,7 @@ export const navSections: NavSection[] = [
       { title: "Development Projects", url: "/projects/development" },
       { title: "Project 360", url: "/projects/project-detail" },
       { title: "Contractors", url: "/projects/contractors" },
+      { title: "Lookup Administration", url: "/projects/lookups" },
       { title: "Progress Tracker", url: "/projects/progress-tracker" },
       { title: "Budget Monitoring", url: "/projects/budget-monitoring" },
       { title: "Analytics", url: "/projects/analytics" },
@@ -103,6 +104,11 @@ export const navSections: NavSection[] = [
     url: "/volunteers",
     icon: HeartHandshake,
     children: [
+      {
+        title: "Applications",
+        url: "/volunteers/applications",
+        roles: ["super-admin", "mp-staff", "constituency-coordinator"],
+      },
       { title: "Volunteer List", url: "/volunteers/list" },
       { title: "Volunteer Profile", url: "/volunteers/profile" },
       { title: "Enrolled Citizens", url: "/volunteers/enrolled-citizens" },
@@ -118,13 +124,13 @@ export const navSections: NavSection[] = [
     url: "/meetings/dashboard",
     icon: CalendarDays,
     children: [
-      { title: "Command Center",       url: "/meetings/dashboard" },
-      { title: "Appointments",         url: "/meetings/appointments" },
-      { title: "Appointment 360",      url: "/meetings/appointment-detail" },
-      { title: "Janata Darbar",        url: "/meetings/janata-darbar" },
-      { title: "Public Meetings",      url: "/meetings/public-meetings" },
-      { title: "MP Tours",             url: "/meetings/tours" },
-      { title: "Master Calendar",      url: "/meetings/calendar" },
+      { title: "Command Center", url: "/meetings/dashboard" },
+      { title: "Appointments", url: "/meetings/appointments" },
+      { title: "Appointment 360", url: "/meetings/appointment-detail" },
+      { title: "Janata Darbar", url: "/meetings/janata-darbar" },
+      { title: "Public Meetings", url: "/meetings/public-meetings" },
+      { title: "MP Tours", url: "/meetings/tours" },
+      { title: "Master Calendar", url: "/meetings/calendar" },
       { title: "Engagement Analytics", url: "/meetings/engagement-analytics" },
     ],
   },
@@ -145,6 +151,7 @@ export const navSections: NavSection[] = [
       { title: "SMS", url: "/communication/sms" },
       { title: "WhatsApp", url: "/communication/whatsapp" },
       { title: "Email", url: "/communication/email" },
+      { title: "Voice & IVR", url: "/communication/voice" },
     ],
   },
   {
@@ -156,12 +163,15 @@ export const navSections: NavSection[] = [
       { title: "Assembly", url: "/analytics/assembly" },
       { title: "Mandal", url: "/analytics/mandal" },
       { title: "Village", url: "/analytics/village" },
+      { title: "Booth", url: "/analytics/booth" },
     ],
   },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
-export function findBreadcrumb(pathname: string): { title: string; url: string }[] {
+export function findBreadcrumb(
+  pathname: string,
+): { title: string; url: string }[] {
   const crumbs: { title: string; url: string }[] = [];
   for (const section of navSections) {
     if (pathname === section.url || pathname.startsWith(section.url + "/")) {

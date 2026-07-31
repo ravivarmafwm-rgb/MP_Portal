@@ -1,0 +1,3 @@
+<?php
+namespace App\Models; use Illuminate\Database\Eloquent\Concerns\HasUuids; use Illuminate\Database\Eloquent\Factories\HasFactory; use Illuminate\Database\Eloquent\Model; use Illuminate\Database\Eloquent\SoftDeletes;
+class ProjectType extends Model { use HasFactory,HasUuids,SoftDeletes; protected $fillable=['name','code','description','is_active','created_by','updated_by']; protected $casts=['is_active'=>'boolean']; public function projects(){return $this->hasMany(Project::class);} }

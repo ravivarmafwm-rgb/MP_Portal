@@ -1,122 +1,204 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import { Users, UserPlus, IndianRupee, MapPin, Download, Plus } from "lucide-react";
+import { AlertCircle, IndianRupee, Search, Users } from "lucide-react";
+import { useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { schemes, villageCoverage, assemblyCoverage } from "@/lib/scheme-data";
-import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { fetchSchemeBeneficiaries, fetchSchemeStats } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/schemes/beneficiaries")({
-  head: () => ({ meta: [{ title: "Beneficiary Intelligence Center" }, { name: "description", content: "Welfare beneficiary analytics across schemes, villages and assemblies." }] }),
   component: BeneficiariesPage,
 });
 
-const kpis = [
-  { l: "Total Beneficiaries", v: "21,530", icon: Users, tone: "bg-primary/10 text-primary" },
-  { l: "New This Month", v: "1,284", icon: UserPlus, tone: "bg-success/10 text-success" },
-  { l: "Benefits Distributed", v: "₹482 Cr", icon: IndianRupee, tone: "bg-info/10 text-info" },
-  { l: "Villages Covered", v: "286 / 312", icon: MapPin, tone: "bg-warning/15 text-warning" },
-];
-
-const categoryDist = [
-  { name: "General", value: 6240 }, { name: "OBC", value: 8420 },
-  { name: "SC", value: 4680 }, { name: "ST", value: 2190 },
-];
-const total = categoryDist.reduce((s, c) => s + c.value, 0);
-
 function BeneficiariesPage() {
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("active");
+  const [page, setPage] = useState(1);
+  const stats = useQuery({
+    queryKey: ["scheme-stats"],
+    queryFn: fetchSchemeStats,
+  });
+  const query = useQuery({
+    queryKey: ["scheme-beneficiaries", search, status, page],
+    queryFn: () =>
+      fetchSchemeBeneficiaries({ search, status, page, per_page: 20 }),
+  });
   return (
     <>
       <PageHeader
-        title="Beneficiary Intelligence Center"
-        description="21,530 beneficiaries · 12 schemes · 286 villages — analytics & welfare distribution."
-        actions={
-          <>
-            <Button variant="outline" size="sm" className="gap-1.5"><Download className="h-4 w-4" /> Export</Button>
-            <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Add Beneficiary</Button>
-          </>
-        }
+        title="Scheme Beneficiaries"
+        description="Beneficiary enrollments and recorded benefit distribution."
       />
-      <div className="space-y-6 p-4 md:p-8">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {kpis.map((k, i) => (
-            <motion.div key={k.l} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <Card className="p-4">
-                <div className={cn("inline-grid h-9 w-9 place-items-center rounded-lg", k.tone)}><k.icon className="h-4 w-4" /></div>
-                <div className="mt-3 text-[11px] uppercase tracking-wider text-muted-foreground">{k.l}</div>
-                <div className="mt-1 font-display text-xl font-bold tabular-nums">{k.v}</div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-2">
-          <Card className="p-5">
-            <h3 className="font-display text-base font-bold">Beneficiaries by Scheme</h3>
-            <div className="mt-4 space-y-3">
-              {[...schemes].sort((a,b) => b.beneficiaries - a.beneficiaries).slice(0, 8).map((s) => (
-                <div key={s.id}>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="inline-flex items-center gap-2 font-medium">{s.icon} {s.name}</span>
-                    <span className="tabular-nums text-muted-foreground">{s.beneficiaries.toLocaleString()}</span>
-                  </div>
-                  <Progress value={(s.beneficiaries / 3700) * 100} className="mt-1 h-1.5" />
-                </div>
-              ))}
-            </div>
+      <div className="space-y-5 p-4 md:p-8">
+        {stats.isError && (
+          <div className="py-6 text-center text-destructive">
+            Beneficiary statistics could not be loaded.
+          </div>
+        )}
+        {stats.isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Skeleton className="h-28" />
+            <Skeleton className="h-28" />
+          </div>
+        ) : stats.data ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card className="p-5">
+              <Users className="h-5 w-5 text-primary" />
+              <div className="mt-3 text-xs text-muted-foreground">
+                Active beneficiaries
+              </div>
+              <div className="text-2xl font-bold">
+                {(stats.data?.total_beneficiaries ?? 0).toLocaleString()}
+              </div>
+            </Card>
+            <Card className="p-5">
+              <IndianRupee className="h-5 w-5 text-primary" />
+              <div className="mt-3 text-xs text-muted-foreground">
+                Recorded benefits distributed
+              </div>
+              <div className="text-2xl font-bold">
+                ₹
+                {(stats.data?.total_benefit_distributed ?? 0).toLocaleString(
+                  "en-IN",
+                )}
+              </div>
+            </Card>
+          </div>
+        ) : null}
+        <Card className="flex flex-col gap-3 p-4 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Search beneficiary name"
+            />
+          </div>
+          <div className="flex gap-2">
+            {["active", "inactive", "completed"].map((value) => (
+              <Button
+                key={value}
+                size="sm"
+                variant={status === value ? "default" : "outline"}
+                onClick={() => {
+                  setStatus(value);
+                  setPage(1);
+                }}
+                className="capitalize"
+              >
+                {value}
+              </Button>
+            ))}
+          </div>
+        </Card>
+        {query.isLoading && (
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-12" />
+            ))}
+          </div>
+        )}
+        {query.isError && (
+          <div className="py-16 text-center text-muted-foreground">
+            <AlertCircle className="mx-auto mb-3 h-8 w-8" />
+            Beneficiaries could not be loaded.
+          </div>
+        )}
+        {query.data && (
+          <Card className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Beneficiary</TableHead>
+                  <TableHead>Scheme</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Enrolled</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Payments</TableHead>
+                  <TableHead className="text-right">Total benefit</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {query.data.data.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium">
+                      {row.beneficiary_name}
+                    </TableCell>
+                    <TableCell>
+                      {row.scheme?.name ?? "Deleted scheme"}
+                    </TableCell>
+                    <TableCell className="capitalize">
+                      {row.beneficiary_type}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(row.enrollment_date).toLocaleDateString(
+                        "en-IN",
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="capitalize">
+                        {row.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {row.benefit_count}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      ₹
+                      {Number(row.total_benefit_received).toLocaleString(
+                        "en-IN",
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {query.data.data.length === 0 && (
+              <div className="p-10 text-center text-sm text-muted-foreground">
+                No beneficiaries match the current filters.
+              </div>
+            )}
           </Card>
-
-          <Card className="p-5">
-            <h3 className="font-display text-base font-bold">By Category</h3>
-            <div className="mt-6 flex items-end justify-around gap-3 h-44">
-              {categoryDist.map((c, i) => (
-                <motion.div key={c.name} initial={{ height: 0 }} animate={{ height: "auto" }} transition={{ delay: i * 0.1 }} className="flex w-full flex-col items-center gap-2">
-                  <div className="text-xs font-semibold tabular-nums">{c.value.toLocaleString()}</div>
-                  <div className="w-full rounded-t-lg bg-gradient-to-t from-primary to-primary/40" style={{ height: `${(c.value / total) * 160}px` }} />
-                  <div className="text-[10px] text-muted-foreground">{c.name}</div>
-                </motion.div>
-              ))}
+        )}
+        {query.data && query.data.meta.last_page > 1 && (
+          <div className="flex justify-between">
+            <span className="text-sm text-muted-foreground">
+              Page {page} of {query.data.meta.last_page}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                disabled={page === 1}
+                onClick={() => setPage((v) => v - 1)}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                disabled={page === query.data.meta.last_page}
+                onClick={() => setPage((v) => v + 1)}
+              >
+                Next
+              </Button>
             </div>
-          </Card>
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-2">
-          <Card className="p-5">
-            <h3 className="font-display text-base font-bold">Top Villages</h3>
-            <div className="mt-3 space-y-2">
-              {[...villageCoverage].sort((a,b)=>b.beneficiaries-a.beneficiaries).slice(0,6).map((v) => (
-                <div key={v.village} className="flex items-center justify-between rounded-md bg-muted/40 p-2.5">
-                  <div>
-                    <div className="text-sm font-semibold">{v.village}</div>
-                    <div className="text-[10px] text-muted-foreground">{v.mandal}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-display text-base font-bold tabular-nums">{v.beneficiaries.toLocaleString()}</div>
-                    <div className="text-[10px] text-muted-foreground">{v.coverage}% coverage</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-          <Card className="p-5">
-            <h3 className="font-display text-base font-bold">By Assembly</h3>
-            <div className="mt-3 space-y-3">
-              {assemblyCoverage.map((a) => (
-                <div key={a.assembly}>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium">{a.assembly}</span>
-                    <span className="tabular-nums text-muted-foreground">{a.beneficiaries.toLocaleString()} / {a.population.toLocaleString()}</span>
-                  </div>
-                  <Progress value={a.coverage} className="mt-1 h-2" />
-                  <div className="mt-0.5 text-right text-[10px] text-muted-foreground">{a.coverage}% coverage</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+          </div>
+        )}
       </div>
     </>
   );

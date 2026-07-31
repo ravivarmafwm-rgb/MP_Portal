@@ -1,140 +1,265 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import { Users, Home, Briefcase, Building, Sprout, GraduationCap, HeartPulse, Download, type LucideIcon } from "lucide-react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Download, Home, IdCard, Loader2, Phone, Users } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchCitizenStats } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { downloadCensus, fetchCensus, getApiErrorMessage } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/surveys/census")({
-  head: () => ({ meta: [{ title: "Constituency Census Center — MP Constituency" }] }),
+  head: () => ({ meta: [{ title: "Constituency Census — MP Constituency" }] }),
   component: CensusCenter,
 });
 
-function StatBlock({ icon: Icon, title, accent, children }: { icon: LucideIcon; title: string; accent: string; children: React.ReactNode }) {
-  return (
-    <Card className="overflow-hidden p-5">
-      <div className="flex items-center gap-3">
-        <div className={cn("grid h-10 w-10 place-items-center rounded-xl", accent)}><Icon className="h-5 w-5" /></div>
-        <div><h3 className="font-display text-sm font-bold">{title}</h3><p className="text-[11px] text-muted-foreground">Live database data · {new Date().getFullYear()}</p></div>
-      </div>
-      <div className="mt-4 space-y-3">{children}</div>
-    </Card>
-  );
-}
-
-function Row({ l, v, sub }: { l: string; v: string | number; sub?: string }) {
-  return (
-    <div className="flex items-end justify-between border-b border-dashed border-border/60 pb-2">
-      <div><div className="text-xs text-muted-foreground">{l}</div>{sub && <div className="text-[10px] text-muted-foreground/80">{sub}</div>}</div>
-      <div className="font-display text-lg font-bold tabular-nums">{typeof v === "number" ? v.toLocaleString("en-IN") : v}</div>
-    </div>
-  );
-}
-
 function CensusCenter() {
-  const { data: stats, isLoading } = useQuery({ queryKey: ["citizen-stats-census"], queryFn: fetchCitizenStats, staleTime: 60_000 });
-
-  const total = stats?.total ?? 0;
-  const male = stats?.male ?? 0;
-  const female = stats?.female ?? 0;
-  const voters = stats?.voters ?? 0;
-
-  if (isLoading) return <div className="p-8 space-y-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}</div>;
-
+  const [exporting, setExporting] = useState(false);
+  const { user } = useAuth();
+  const canExport = [
+    "super-admin",
+    "mp",
+    "mp-staff",
+    "constituency-coordinator",
+    "assembly-coordinator",
+  ].includes(user?.role_slug ?? "");
+  const query = useQuery({
+    queryKey: ["constituency-census"],
+    queryFn: fetchCensus,
+    staleTime: 60_000,
+  });
+  const exportReport = async () => {
+    setExporting(true);
+    try {
+      const url = await downloadCensus();
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `constituency-census-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setExporting(false);
+    }
+  };
+  if (query.isLoading)
+    return (
+      <div className="space-y-4 p-8">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} className="h-32" />
+        ))}
+      </div>
+    );
+  if (query.isError)
+    return (
+      <div className="p-8">
+        <Card className="p-10 text-center text-sm text-destructive">
+          {getApiErrorMessage(query.error)}
+        </Card>
+      </div>
+    );
+  const data = query.data!;
+  const percent = (value: number, total = data.total_citizens) =>
+    total > 0 ? Math.round((value * 100) / total) : 0;
+  const coverage = [
+    { label: "Aadhaar recorded", value: data.with_aadhaar, icon: IdCard },
+    { label: "Voter ID recorded", value: data.with_voter_id, icon: IdCard },
+    { label: "Mobile recorded", value: data.with_mobile, icon: Phone },
+    { label: "Education recorded", value: data.with_education, icon: Users },
+    { label: "Occupation recorded", value: data.with_occupation, icon: Users },
+  ];
   return (
     <>
       <PageHeader
         title="Constituency Census Center"
-        description="Aggregated population, household and welfare indicators across the constituency."
-        actions={<Button variant="outline" size="sm" className="gap-1.5"><Download className="h-4 w-4" /> Download Census Report</Button>}
+        description="Scoped aggregates calculated from registered citizens and households."
+        actions={
+          canExport ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={exporting}
+              onClick={exportReport}
+            >
+              {exporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Download CSV
+            </Button>
+          ) : undefined
+        }
       />
       <div className="space-y-4 p-4 md:p-8">
-        <Card className="border-primary/20 bg-gradient-to-r from-primary/10 via-background to-background p-6">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <Badge variant="secondary" className="bg-primary/10 text-primary">Live Census Intelligence</Badge>
-              <h2 className="mt-2 font-display text-2xl font-bold">Registered Citizens: {total.toLocaleString("en-IN")}</h2>
-              <p className="text-xs text-muted-foreground">From PostgreSQL database · real-time constituency data</p>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            ["Registered citizens", data.total_citizens],
+            ["Households", data.households],
+            ["Registered voters", data.voters],
+            ["BPL households", data.bpl_households],
+          ].map(([label, value]) => (
+            <Card key={String(label)} className="p-4">
+              <div className="text-xs text-muted-foreground">{label}</div>
+              <div className="mt-1 font-display text-2xl font-bold tabular-nums">
+                {Number(value).toLocaleString("en-IN")}
+              </div>
+            </Card>
+          ))}
+        </div>
+        {data.total_citizens === 0 ? (
+          <Card className="p-12 text-center">
+            <Users className="mx-auto h-8 w-8 text-muted-foreground" />
+            <h2 className="mt-3 font-semibold">
+              No census records in your scope
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Aggregates will appear after citizen and family records are
+              registered.
+            </p>
+          </Card>
+        ) : (
+          <>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <Card className="p-5">
+                <h3 className="font-semibold">Gender registration</h3>
+                <div className="mt-4 space-y-3">
+                  {[
+                    ["Male", data.male],
+                    ["Female", data.female],
+                    ["Other / unspecified", data.other_gender],
+                  ].map(([label, value]) => (
+                    <div key={String(label)}>
+                      <div className="flex justify-between text-sm">
+                        <span>{label}</span>
+                        <span>
+                          {Number(value).toLocaleString("en-IN")} (
+                          {percent(Number(value))}%)
+                        </span>
+                      </div>
+                      <Progress
+                        className="mt-1 h-1.5"
+                        value={percent(Number(value))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+              <Card className="p-5">
+                <h3 className="font-semibold">Age groups</h3>
+                <div className="mt-4 space-y-3">
+                  {[
+                    ["Under 18", data.children],
+                    ["18–59", data.working_age],
+                    ["60 and above", data.senior_citizens],
+                  ].map(([label, value]) => (
+                    <div key={String(label)}>
+                      <div className="flex justify-between text-sm">
+                        <span>{label}</span>
+                        <span>
+                          {Number(value).toLocaleString("en-IN")} (
+                          {percent(Number(value))}%)
+                        </span>
+                      </div>
+                      <Progress
+                        className="mt-1 h-1.5"
+                        value={percent(Number(value))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+              <Card className="p-5">
+                <h3 className="font-semibold">Household indicators</h3>
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <span className="flex items-center gap-2 text-sm">
+                      <Home className="h-4 w-4" />
+                      Households
+                    </span>
+                    <strong>{data.households.toLocaleString("en-IN")}</strong>
+                  </div>
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <span className="text-sm">BPL households</span>
+                    <strong>
+                      {data.bpl_households.toLocaleString("en-IN")}
+                    </strong>
+                  </div>
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <span className="text-sm">Persons with disability</span>
+                    <strong>
+                      {data.persons_with_disability.toLocaleString("en-IN")}
+                    </strong>
+                  </div>
+                </div>
+              </Card>
             </div>
-            <div className="grid grid-cols-3 gap-6 text-center">
-              <div><div className="text-[10px] uppercase text-muted-foreground">Male</div><div className="font-display text-lg font-bold tabular-nums">{male.toLocaleString("en-IN")}</div></div>
-              <div><div className="text-[10px] uppercase text-muted-foreground">Female</div><div className="font-display text-lg font-bold tabular-nums">{female.toLocaleString("en-IN")}</div></div>
-              <div><div className="text-[10px] uppercase text-muted-foreground">Voters</div><div className="font-display text-lg font-bold tabular-nums">{voters.toLocaleString("en-IN")}</div></div>
+            <Card className="p-5">
+              <h3 className="font-semibold">Record completeness</h3>
+              <p className="text-xs text-muted-foreground">
+                Coverage means the field is present in a citizen record; it does
+                not imply external verification.
+              </p>
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                {coverage.map((item) => (
+                  <div key={item.label} className="rounded-md border p-3">
+                    <item.icon className="h-4 w-4 text-primary" />
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {item.label}
+                    </div>
+                    <div className="font-semibold">
+                      {item.value.toLocaleString("en-IN")} ·{" "}
+                      {percent(item.value)}%
+                    </div>
+                    <Progress
+                      className="mt-2 h-1.5"
+                      value={percent(item.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <div className="grid gap-4 lg:grid-cols-2">
+              {[
+                ["Education", data.education_breakdown],
+                ["Occupation", data.occupation_breakdown],
+              ].map(([title, rows]) => (
+                <Card key={String(title)} className="p-5">
+                  <h3 className="font-semibold">{String(title)} breakdown</h3>
+                  {(rows as Array<{ label: string; count: number }>).length ===
+                  0 ? (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                      No {String(title).toLowerCase()} data recorded.
+                    </p>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {(rows as Array<{ label: string; count: number }>).map(
+                        (row) => (
+                          <div
+                            key={row.label}
+                            className="flex justify-between border-b py-2 text-sm"
+                          >
+                            <span>{row.label}</span>
+                            <strong>{row.count.toLocaleString("en-IN")}</strong>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  )}
+                </Card>
+              ))}
             </div>
-          </div>
-        </Card>
-
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <StatBlock icon={Users} title="Population" accent="bg-primary/10 text-primary">
-            <Row l="Total registered" v={total} />
-            <Row l="Male" v={male} />
-            <Row l="Female" v={female} />
-            <Row l="Registered voters" v={voters} />
-          </StatBlock>
-
-          <StatBlock icon={Home} title="Households" accent="bg-info/10 text-info">
-            <Row l="This month enrolled" v={stats?.this_month ?? 0} />
-            <Row l="Male citizens" v={male} />
-            <Row l="Female citizens" v={female} />
-            <Row l="Voter coverage" v={total > 0 ? `${Math.round((voters / total) * 100)}%` : "—"} />
-          </StatBlock>
-
-          <StatBlock icon={Briefcase} title="Data Quality" accent="bg-success/10 text-success">
-            <Row l="Citizens with Aadhaar" v="See DB" />
-            <Row l="Citizens with Voter ID" v="See DB" />
-            <Row l="Citizens with mobile" v="See DB" />
-            <div>
-              <div className="mb-1 flex justify-between text-xs"><span className="text-muted-foreground">Voter enrollment rate</span><span className="font-semibold tabular-nums">{total > 0 ? Math.round((voters / total) * 100) : 0}%</span></div>
-              <Progress value={total > 0 ? Math.round((voters / total) * 100) : 0} className="h-1.5" />
-            </div>
-          </StatBlock>
-
-          <StatBlock icon={Building} title="Housing" accent="bg-warning/15 text-warning">
-            <div>
-              <div className="mb-1 flex justify-between text-xs"><span>Urban areas</span><span className="font-semibold tabular-nums">~60%</span></div>
-              <Progress value={60} className="h-1.5" />
-            </div>
-            <div>
-              <div className="mb-1 flex justify-between text-xs"><span>Rural areas</span><span className="font-semibold tabular-nums">~40%</span></div>
-              <Progress value={40} className="h-1.5" />
-            </div>
-            <Row l="PMAY demand est." v="12,400+" />
-          </StatBlock>
-
-          <StatBlock icon={Sprout} title="Agriculture" accent="bg-success/10 text-success">
-            <Row l="Farmer households" v="~28%" />
-            <Row l="Urban workforce" v="~72%" />
-            <div>
-              <div className="mb-1 flex justify-between text-xs"><span>PM-KISAN enrolled</span><span className="font-semibold tabular-nums">~42%</span></div>
-              <Progress value={42} className="h-1.5" />
-            </div>
-          </StatBlock>
-
-          <StatBlock icon={GraduationCap} title="Education" accent="bg-info/10 text-info">
-            <div>
-              <div className="mb-1 flex justify-between text-xs"><span>Literacy rate est.</span><span className="font-semibold tabular-nums">~78%</span></div>
-              <Progress value={78} className="h-1.5" />
-            </div>
-            <Row l="Primary enrollment" v="~92%" />
-            <Row l="Secondary completion" v="~68%" />
-          </StatBlock>
-
-          <StatBlock icon={HeartPulse} title="Health" accent="bg-destructive/10 text-destructive">
-            <Row l="Ayushman Bharat coverage" v="~62%" />
-            <Row l="PHCs in constituency" v="8" />
-            <Row l="Sub-centres" v="32" />
-          </StatBlock>
-        </motion.div>
-
-        <Card className="p-4 text-center text-xs text-muted-foreground">
-          Population statistics derived from citizen database · {total.toLocaleString("en-IN")} registered citizens as of {new Date().toLocaleDateString("en-IN")}
-        </Card>
+          </>
+        )}
+        <p className="text-center text-xs text-muted-foreground">
+          Generated from the scoped database at{" "}
+          {new Date(data.generated_at).toLocaleString("en-IN")}. No estimates or
+          external census claims are included.
+        </p>
       </div>
     </>
   );

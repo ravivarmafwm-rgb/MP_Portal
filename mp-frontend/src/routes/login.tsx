@@ -26,6 +26,8 @@ function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthenticated, user, isLoading } = useAuth();
   const [showPass, setShowPass] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
 
   // Already logged in → go to role dashboard
   useEffect(() => {
@@ -42,7 +44,11 @@ function LoginPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const authUser = await login(data.email, data.password);
+      const authUser = await login(
+        data.email,
+        data.password,
+        mfaRequired ? mfaCode : undefined,
+      );
       toast.success("Welcome back!");
       navigate({ to: getDashboardPath(authUser.role_slug), replace: true });
     } catch (err: unknown) {
@@ -50,15 +56,21 @@ function LoginPage() {
       if (axios.isAxiosError(err)) {
         const status = err.response?.status;
         if (!err.response) {
-          msg = "Cannot connect to the API. Check your connection or API configuration.";
+          msg =
+            "Cannot connect to the API. Check your connection or API configuration.";
         } else if (status === 401) {
           msg = "Invalid email or password.";
+        } else if (status === 428 && err.response.data?.mfa_required) {
+          setMfaRequired(true);
+          msg = "Enter the six-digit code from your authenticator app.";
         } else if (status === 422) {
-          msg = err.response.data?.message ?? "Please check the submitted details.";
+          msg =
+            err.response.data?.message ?? "Please check the submitted details.";
         } else if (status === 403) {
           msg = "This account is not authorized to access the portal.";
         } else if (status && status >= 500) {
-          msg = "The server is temporarily unavailable. Please try again later.";
+          msg =
+            "The server is temporarily unavailable. Please try again later.";
         }
       }
       toast.error(msg);
@@ -77,8 +89,12 @@ function LoginPage() {
             <Building2 className="h-6 w-6" />
           </div>
           <div>
-            <div className="font-display text-lg font-bold text-sidebar-foreground">MP Connect</div>
-            <div className="text-xs text-sidebar-foreground/60">Constituency Platform</div>
+            <div className="font-display text-lg font-bold text-sidebar-foreground">
+              MP Connect
+            </div>
+            <div className="text-xs text-sidebar-foreground/60">
+              Constituency Platform
+            </div>
           </div>
         </div>
 
@@ -88,12 +104,15 @@ function LoginPage() {
             Live Constituency Data
           </div>
           <h1 className="font-display text-4xl font-bold leading-tight text-sidebar-foreground">
-            Manage your<br />
-            <span className="text-sidebar-primary">constituency</span><br />
+            Manage your
+            <br />
+            <span className="text-sidebar-primary">constituency</span>
+            <br />
             with confidence.
           </h1>
           <p className="text-sidebar-foreground/60 text-sm max-w-xs leading-relaxed">
-            Real-time citizen data, grievance tracking, scheme coverage, and project monitoring — all in one place.
+            Real-time citizen data, grievance tracking, scheme coverage, and
+            project monitoring — all in one place.
           </p>
 
           <div className="grid grid-cols-3 gap-4 pt-4">
@@ -102,9 +121,16 @@ function LoginPage() {
               { label: "Modules", value: "12+" },
               { label: "Roles", value: "11" },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-xl border border-sidebar-border/40 bg-sidebar-accent/40 p-3 text-center">
-                <div className="font-display text-xl font-bold text-sidebar-foreground">{stat.value}</div>
-                <div className="text-xs text-sidebar-foreground/50 mt-0.5">{stat.label}</div>
+              <div
+                key={stat.label}
+                className="rounded-xl border border-sidebar-border/40 bg-sidebar-accent/40 p-3 text-center"
+              >
+                <div className="font-display text-xl font-bold text-sidebar-foreground">
+                  {stat.value}
+                </div>
+                <div className="text-xs text-sidebar-foreground/50 mt-0.5">
+                  {stat.label}
+                </div>
               </div>
             ))}
           </div>
@@ -128,7 +154,9 @@ function LoginPage() {
         <div className="w-full max-w-sm space-y-7">
           <div className="space-y-1">
             <h2 className="font-display text-2xl font-bold">Sign in</h2>
-            <p className="text-sm text-muted-foreground">Enter your credentials to access the platform</p>
+            <p className="text-sm text-muted-foreground">
+              Enter your credentials to access the platform
+            </p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -145,7 +173,11 @@ function LoginPage() {
                   {...register("email")}
                 />
               </div>
-              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+              {errors.email && (
+                <p className="text-xs text-destructive">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -166,10 +198,35 @@ function LoginPage() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   tabIndex={-1}
                 >
-                  {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPass ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
-              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+              {errors.password && (
+                <p className="text-xs text-destructive">
+                  {errors.password.message}
+                </p>
+              )}
+              {mfaRequired && (
+                <div className="space-y-2">
+                  <Label htmlFor="mfa-code">Authenticator code</Label>
+                  <Input
+                    id="mfa-code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={mfaCode}
+                    onChange={(e) =>
+                      setMfaCode(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="123456"
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>

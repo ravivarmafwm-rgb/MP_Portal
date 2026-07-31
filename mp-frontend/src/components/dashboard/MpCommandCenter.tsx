@@ -1,13 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  Users, Home as HomeIcon, HeartHandshake, MessageSquareWarning,
-  HardHat, FileBadge, MapPinned, PiggyBank, CalendarRange, FileText,
+  Users,
+  Home as HomeIcon,
+  HeartHandshake,
+  MessageSquareWarning,
+  HardHat,
+  FileBadge,
+  MapPinned,
+  PiggyBank,
+  CalendarRange,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Breadcrumb, BreadcrumbItem, BreadcrumbList,
-  BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage,
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { HealthScore } from "@/components/dashboard/HealthScore";
@@ -29,7 +41,9 @@ interface MpCommandCenterProps {
   title?: string;
 }
 
-export function MpCommandCenter({ title = "Command Center" }: MpCommandCenterProps) {
+export function MpCommandCenter({
+  title = "Command Center",
+}: MpCommandCenterProps) {
   const { user } = useAuth();
 
   const { data: stats, isLoading } = useQuery({
@@ -43,7 +57,14 @@ export function MpCommandCenter({ title = "Command Center" }: MpCommandCenterPro
   const healthScore = stats?.health_score ?? {};
   const mpName = stats?.mp_name ?? user?.name ?? "Hon. MP";
   const constituencyName = stats?.constituency_name ?? "Constituency";
-  const dateLabel = stats?.date_label ?? new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const dateLabel =
+    stats?.date_label ??
+    new Date().toLocaleDateString("en-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
 
   return (
     <div className="space-y-6 p-4 md:p-8">
@@ -58,9 +79,13 @@ export function MpCommandCenter({ title = "Command Center" }: MpCommandCenterPro
         <div className="relative">
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem><BreadcrumbLink href="/">Home</BreadcrumbLink></BreadcrumbItem>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/">Home</BreadcrumbLink>
+              </BreadcrumbItem>
               <BreadcrumbSeparator />
-              <BreadcrumbItem><BreadcrumbPage>{title}</BreadcrumbPage></BreadcrumbItem>
+              <BreadcrumbItem>
+                <BreadcrumbPage>{title}</BreadcrumbPage>
+              </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
           <div className="mt-3 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -70,7 +95,9 @@ export function MpCommandCenter({ title = "Command Center" }: MpCommandCenterPro
                 Good day, <span className="text-primary">{mpName}</span>
               </h1>
               <p className="mt-1 max-w-2xl text-body text-muted-foreground">
-                Here's what is happening across the <strong>{constituencyName}</strong> constituency today — triaged, ranked and ready for your review.
+                Here's what is happening across the{" "}
+                <strong>{constituencyName}</strong> constituency today —
+                triaged, ranked and ready for your review.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -94,19 +121,72 @@ export function MpCommandCenter({ title = "Command Center" }: MpCommandCenterPro
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard label="Total Citizens" value={kpis.total_citizens ?? 0} icon={Users} hint="Registered records" tone="primary" index={0} />
-            <KpiCard label="Total Families" value={kpis.total_families ?? 0} icon={HomeIcon} hint="Family units mapped" tone="info" index={1} />
-            <KpiCard label="Volunteers" value={kpis.volunteers ?? 0} icon={HeartHandshake} hint="Active across mandals" tone="success" index={2} />
-            <KpiCard label="Villages" value={kpis.villages ?? 0} icon={MapPinned} hint="Under direct coverage" tone="warning" index={3} />
-            <KpiCard label="Active Grievances" value={kpis.active_grievances ?? 0} icon={MessageSquareWarning} hint="Awaiting resolution" tone="destructive" index={4} />
-            <KpiCard label="Active Projects" value={kpis.active_projects ?? 0} icon={HardHat} hint="In execution" tone="info" index={5} />
-            <KpiCard label="Scheme Applications" value={kpis.scheme_applications ?? 0} icon={FileBadge} hint="This quarter" tone="primary" index={6} />
+            <KpiCard
+              label="Total Citizens"
+              value={kpis.total_citizens ?? 0}
+              icon={Users}
+              hint="Registered records"
+              tone="primary"
+              index={0}
+            />
+            <KpiCard
+              label="Total Families"
+              value={kpis.total_families ?? 0}
+              icon={HomeIcon}
+              hint="Family units mapped"
+              tone="info"
+              index={1}
+            />
+            <KpiCard
+              label="Volunteers"
+              value={kpis.volunteers ?? 0}
+              icon={HeartHandshake}
+              hint="Active across mandals"
+              tone="success"
+              index={2}
+            />
+            <KpiCard
+              label="Villages"
+              value={kpis.villages ?? 0}
+              icon={MapPinned}
+              hint="Under direct coverage"
+              tone="warning"
+              index={3}
+            />
+            <KpiCard
+              label="Active Grievances"
+              value={kpis.active_grievances ?? 0}
+              icon={MessageSquareWarning}
+              hint="Awaiting resolution"
+              tone="destructive"
+              index={4}
+            />
+            <KpiCard
+              label="Active Projects"
+              value={kpis.active_projects ?? 0}
+              icon={HardHat}
+              hint="In execution"
+              tone="info"
+              index={5}
+            />
+            <KpiCard
+              label="Scheme Applications"
+              value={kpis.scheme_applications ?? 0}
+              icon={FileBadge}
+              hint="This quarter"
+              tone="primary"
+              index={6}
+            />
             <KpiCard
               label="Budget Utilization"
               value={kpis.budget_utilization ?? 0}
               suffix="%"
               icon={PiggyBank}
-              hint={kpis.budget_spent ? `₹${(kpis.budget_spent / 10000000).toFixed(1)} Cr spent` : "Budget data"}
+              hint={
+                kpis.budget_spent
+                  ? `₹${(kpis.budget_spent / 10000000).toFixed(1)} Cr spent`
+                  : "Budget data"
+              }
               tone="success"
               index={7}
             />

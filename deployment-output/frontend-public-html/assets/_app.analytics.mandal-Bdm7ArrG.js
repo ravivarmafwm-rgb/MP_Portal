@@ -1,0 +1,1 @@
+import{r as e}from"./useRouter-C7pTCAcE.js";import{a as t}from"./index-DSGUd9YH.js";import{t as n}from"./AnalyticsReportPage-rtrQ7MhJ.js";var r=e();function i(){return(0,r.jsx)(n,{report:t.useLoaderData(),title:`Mandal Analytics`,description:`Mandal-wise operational and development metrics within your authorized geography.`})}export{i as component};

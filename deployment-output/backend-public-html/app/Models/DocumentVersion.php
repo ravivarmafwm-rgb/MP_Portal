@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DocumentVersion extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'document_id',
@@ -18,6 +19,9 @@ class DocumentVersion extends Model
         'file_path',
         'file_size',
         'file_type',
+        'mime_type',
+        'storage_disk',
+        'checksum_sha256',
         'change_notes',
         'uploaded_by',
         'is_current',
@@ -29,6 +33,8 @@ class DocumentVersion extends Model
         'version_number' => 'integer',
         'is_current' => 'boolean',
     ];
+
+    protected $hidden = ['file_path', 'storage_disk', 'checksum_sha256'];
 
     public function document()
     {

@@ -7,13 +7,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SurveyResponse extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'survey_id',
+        'client_submission_id',
         'citizen_id',
         'volunteer_id',
         'village_id',
@@ -22,6 +24,8 @@ class SurveyResponse extends Model
         'respondent_mobile',
         'response_date',
         'response_time',
+        'collected_at',
+        'submitted_offline',
         'latitude',
         'longitude',
         'status',
@@ -32,7 +36,8 @@ class SurveyResponse extends Model
 
     protected $casts = [
         'response_date' => 'date',
-        'response_time' => 'datetime',
+        'collected_at' => 'datetime',
+        'submitted_offline' => 'boolean',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
     ];

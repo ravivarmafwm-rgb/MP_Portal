@@ -40,7 +40,9 @@ export function NotificationCenter() {
     mutationFn: markNotificationRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+      queryClient.invalidateQueries({
+        queryKey: ["notifications-unread-count"],
+      });
     },
   });
 
@@ -48,7 +50,9 @@ export function NotificationCenter() {
     mutationFn: markAllNotificationsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+      queryClient.invalidateQueries({
+        queryKey: ["notifications-unread-count"],
+      });
     },
   });
 
@@ -70,10 +74,17 @@ export function NotificationCenter() {
       <SheetContent className="w-full sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Notifications</SheetTitle>
-          <SheetDescription>Live updates from the constituency platform</SheetDescription>
+          <SheetDescription>
+            Live updates from the constituency platform
+          </SheetDescription>
         </SheetHeader>
         <div className="mt-4 flex justify-end">
-          <Button variant="ghost" size="sm" onClick={() => markAll.mutate()} disabled={unreadCount === 0}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => markAll.mutate()}
+            disabled={unreadCount === 0}
+          >
             Mark all read
           </Button>
         </div>
@@ -83,27 +94,50 @@ export function NotificationCenter() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : items.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No notifications yet</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No notifications yet
+            </p>
           ) : (
-            items.map((n: { id: string; title: string; message: string; type: string; is_read: boolean; created_at: string }, i: number) => (
-              <motion.button
-                key={n.id}
-                type="button"
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-                onClick={() => !n.is_read && markRead.mutate(n.id)}
-                className="w-full rounded-lg border border-border/60 p-3 text-left hover:bg-muted/50"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold">{n.title}</div>
-                    <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{n.message}</p>
+            items.map(
+              (
+                n: {
+                  id: string;
+                  title: string;
+                  message: string;
+                  type: string;
+                  is_read: boolean;
+                  created_at: string;
+                },
+                i: number,
+              ) => (
+                <motion.button
+                  key={n.id}
+                  type="button"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  onClick={() => !n.is_read && markRead.mutate(n.id)}
+                  className="w-full rounded-lg border border-border/60 p-3 text-left hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold">{n.title}</div>
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+                        {n.message}
+                      </p>
+                    </div>
+                    {!n.is_read && (
+                      <Badge
+                        variant="secondary"
+                        className="shrink-0 text-[10px]"
+                      >
+                        New
+                      </Badge>
+                    )}
                   </div>
-                  {!n.is_read && <Badge variant="secondary" className="shrink-0 text-[10px]">New</Badge>}
-                </div>
-              </motion.button>
-            ))
+                </motion.button>
+              ),
+            )
           )}
         </div>
       </SheetContent>

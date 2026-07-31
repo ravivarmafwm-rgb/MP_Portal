@@ -7,11 +7,27 @@ import { AnimatedNumber } from "./AnimatedNumber";
 type Tone = "primary" | "success" | "warning" | "info" | "destructive";
 
 const toneMap: Record<Tone, { bg: string; text: string; ring: string }> = {
-  primary: { bg: "bg-primary/10", text: "text-primary", ring: "ring-primary/20" },
-  success: { bg: "bg-success/10", text: "text-success", ring: "ring-success/20" },
-  warning: { bg: "bg-warning/15", text: "text-warning", ring: "ring-warning/20" },
+  primary: {
+    bg: "bg-primary/10",
+    text: "text-primary",
+    ring: "ring-primary/20",
+  },
+  success: {
+    bg: "bg-success/10",
+    text: "text-success",
+    ring: "ring-success/20",
+  },
+  warning: {
+    bg: "bg-warning/15",
+    text: "text-warning",
+    ring: "ring-warning/20",
+  },
   info: { bg: "bg-info/10", text: "text-info", ring: "ring-info/20" },
-  destructive: { bg: "bg-destructive/10", text: "text-destructive", ring: "ring-destructive/20" },
+  destructive: {
+    bg: "bg-destructive/10",
+    text: "text-destructive",
+    ring: "ring-destructive/20",
+  },
 };
 
 export function KpiCard({
@@ -44,7 +60,11 @@ export function KpiCard({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }}
+      transition={{
+        duration: 0.35,
+        delay: index * 0.04,
+        ease: [0.22, 1, 0.36, 1],
+      }}
     >
       <Card className="group relative overflow-hidden p-5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-elevated">
         <div
@@ -61,7 +81,9 @@ export function KpiCard({
               <AnimatedNumber value={value} format={format} />
               {suffix}
             </p>
-            {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+            {hint && (
+              <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+            )}
           </div>
           <div
             className={cn(

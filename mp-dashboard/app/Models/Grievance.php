@@ -108,6 +108,11 @@ class Grievance extends Model
         return $this->hasMany(GrievanceFeedback::class);
     }
 
+    public function documents()
+    {
+        return $this->morphMany(Document::class, 'documentable');
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');

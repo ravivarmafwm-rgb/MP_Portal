@@ -1,0 +1,4 @@
+<?php
+namespace App\Http\Requests\Project;
+use App\Models\Project;use Illuminate\Foundation\Http\FormRequest;
+class SaveProjectMilestoneRequest extends FormRequest { public function authorize():bool{$project=Project::find($this->route('project'));return $project&&($this->user()?->can('update',$project)??false);} public function rules():array{return ['name'=>['required','string','min:2','max:255'],'description'=>['nullable','string','max:10000'],'target_date'=>['required','date'],'actual_date'=>['nullable','date'],'target_percentage'=>['nullable','numeric','between:0,100'],'status'=>['required','in:pending,in_progress,completed,delayed,cancelled'],'budget'=>['nullable','numeric','min:0'],'actual_cost'=>['nullable','numeric','min:0'],'deliverables'=>['nullable','string','max:10000'],'remarks'=>['nullable','string','max:10000'],'sort_order'=>['nullable','integer','min:0']];} }

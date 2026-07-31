@@ -1,351 +1,453 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
-  Briefcase,
-  Building2,
-  ClipboardList,
-  Compass,
+  AlertCircle,
+  CalendarDays,
   FileBadge,
   FileText,
   History,
   MapPin,
   MessageSquareWarning,
-  Search,
+  Building2,
   User,
-  UserCircle2,
   Users,
-  Wallet,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { CitizenProfileHeader } from "@/components/citizens/CitizenProfileHeader";
-import { QuickActionsBar } from "@/components/citizens/QuickActionsBar";
-import { InfoCard } from "@/components/citizens/InfoCard";
-import { FamilyTree } from "@/components/citizens/FamilyTree";
-import { ActivityTimeline } from "@/components/citizens/ActivityTimeline";
-import { DocumentCard } from "@/components/citizens/DocumentCard";
-import {
-  activityByCitizen,
-  citizens,
-  documentsByCitizen,
-  getCitizen,
-  getFamilyOf,
-  grievancesByCitizen,
-  schemesByCitizen,
-  surveysByCitizen,
-} from "@/lib/citizen-data";
+  deleteCitizen,
+  deleteCitizenAddress,
+  fetchCitizen,
+  getApiErrorMessage,
+} from "@/lib/api";
+import { CitizenEditDialog } from "@/components/citizens/CitizenEditDialog";
+import { CitizenAddressDialog } from "@/components/citizens/CitizenAddressDialog";
+import { useAuth } from "@/lib/auth";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/citizens/profile")({
   validateSearch: (search: Record<string, unknown>) => ({
     id: typeof search.id === "string" ? search.id : undefined,
-    tab: typeof search.tab === "string" ? search.tab : undefined,
-  }),
-  head: () => ({
-    meta: [
-      { title: "Citizen 360 — MP Constituency Platform" },
-      { name: "description", content: "Complete 360° profile: schemes, grievances, surveys and history." },
-    ],
   }),
   component: CitizenProfilePage,
 });
 
-const schemeTone: Record<string, string> = {
-  Approved: "bg-success/10 text-success",
-  Pending: "bg-warning/15 text-warning",
-  Rejected: "bg-destructive/10 text-destructive",
-  "Under Review": "bg-primary/10 text-primary",
-};
-const grievTone: Record<string, string> = {
-  Open: "bg-destructive/10 text-destructive",
-  "In Progress": "bg-warning/15 text-warning",
-  Resolved: "bg-success/10 text-success",
-  Closed: "bg-muted text-muted-foreground",
-};
-
 function CitizenProfilePage() {
   const { id } = Route.useSearch();
-  const citizen = getCitizen(id);
-  const family = getFamilyOf(citizen);
-  const docs = documentsByCitizen[citizen.id] ?? documentsByCitizen["CTZ-100245"];
-  const schemes = schemesByCitizen[citizen.id] ?? schemesByCitizen["CTZ-100245"];
-  const grievances = grievancesByCitizen[citizen.id] ?? grievancesByCitizen["CTZ-100245"];
-  const surveys = surveysByCitizen[citizen.id] ?? surveysByCitizen["CTZ-100245"];
-  const activity = activityByCitizen[citizen.id] ?? activityByCitizen["CTZ-100245"];
-
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const canUpdate = [
+    "super-admin",
+    "mp-staff",
+    "constituency-coordinator",
+    "assembly-coordinator",
+    "mandal-coordinator",
+    "village-coordinator",
+  ].includes(user?.role_slug ?? "");
+  const archive = useMutation({
+    mutationFn: deleteCitizen,
+    onSuccess: async () => {
+      toast.success("Citizen record archived.");
+      await navigate({ to: "/citizens/list" });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+  const archiveAddress = useMutation({
+    mutationFn: (addressId: string) => deleteCitizenAddress(id!, addressId),
+    onSuccess: async () => {
+      toast.success("Address archived.");
+      await query.refetch();
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+  const query = useQuery({
+    queryKey: ["citizen", id],
+    queryFn: () => fetchCitizen(id!),
+    enabled: Boolean(id),
+  });
+  if (!id) return <State text="Select a citizen from the citizen directory." />;
+  if (query.isLoading)
+    return (
+      <div className="space-y-3 p-8">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <Skeleton key={i} className="h-20" />
+        ))}
+      </div>
+    );
+  if (query.isError)
+    return (
+      <State text="The citizen could not be loaded or is outside your assigned area." />
+    );
+  const citizen = query.data!;
+  const name = [citizen.first_name, citizen.middle_name, citizen.last_name]
+    .filter(Boolean)
+    .join(" ");
+  const primary =
+    citizen.addresses.find((address) => address.address_type === "permanent") ??
+    citizen.addresses[0];
   return (
     <>
       <PageHeader
-        title="Citizen 360"
-        description="Unified view of every interaction across the constituency."
+        title={name}
+        description={`Citizen ID ${citizen.unique_id}`}
         actions={
-          <div className="flex items-center gap-2">
-            <div className="relative hidden md:block">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search Aadhaar, mobile, voter ID, family ID…"
-                className="h-9 w-[320px] pl-8 text-sm"
-              />
-            </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/citizens/list">Back to Directory</Link>
+          <>
+            {canUpdate && <CitizenEditDialog citizen={citizen} />}
+            {user?.role_slug === "super-admin" && (
+              <Button
+                variant="destructive"
+                disabled={archive.isPending}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Archive this citizen? Records with linked operational history cannot be archived.",
+                    )
+                  )
+                    archive.mutate(citizen.id);
+                }}
+              >
+                <Trash2 className="h-4 w-4" /> Archive
+              </Button>
+            )}
+            <Button asChild variant="outline">
+              <Link to="/citizens/list">Back to directory</Link>
             </Button>
-          </div>
+          </>
         }
       />
-      <div className="space-y-6 p-4 md:p-8">
-        <div className="grid gap-6 xl:grid-cols-[1fr_280px]">
-          <CitizenProfileHeader citizen={citizen} />
-          <Card className="hidden p-4 xl:block">
-            <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Jump to another citizen</div>
-            <div className="mt-3 space-y-1.5">
-              {citizens.slice(0, 6).map((c) => (
-                <Link
-                  key={c.id}
-                  to="/citizens/profile"
-                  search={{ id: c.id }}
-                  className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-                >
-                  <span className="truncate">{c.name}</span>
-                  <span className="text-[10px] text-muted-foreground">{c.id.slice(-4)}</span>
-                </Link>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        <QuickActionsBar />
-
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="flex w-full flex-wrap justify-start gap-1 bg-muted/60 p-1">
-            <TabsTrigger value="overview" className="gap-1.5"><UserCircle2 className="h-3.5 w-3.5" />Overview</TabsTrigger>
-            <TabsTrigger value="family" className="gap-1.5"><Users className="h-3.5 w-3.5" />Family</TabsTrigger>
-            <TabsTrigger value="schemes" className="gap-1.5"><FileBadge className="h-3.5 w-3.5" />Schemes</TabsTrigger>
-            <TabsTrigger value="grievances" className="gap-1.5"><MessageSquareWarning className="h-3.5 w-3.5" />Grievances</TabsTrigger>
-            <TabsTrigger value="surveys" className="gap-1.5"><ClipboardList className="h-3.5 w-3.5" />Surveys</TabsTrigger>
-            <TabsTrigger value="documents" className="gap-1.5"><FileText className="h-3.5 w-3.5" />Documents</TabsTrigger>
-            <TabsTrigger value="activity" className="gap-1.5"><History className="h-3.5 w-3.5" />Activity</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="mt-5">
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="grid gap-4 lg:grid-cols-2"
-            >
-              <InfoCard
-                title="Personal Information"
-                icon={User}
-                index={0}
-                items={[
-                  { label: "Full Name", value: citizen.name },
-                  { label: "Gender", value: citizen.gender },
-                  { label: "Age", value: `${citizen.age} years` },
-                  { label: "Occupation", value: citizen.occupation },
-                  { label: "Mobile", value: citizen.mobile },
-                  { label: "Registered", value: citizen.registeredOn },
-                ]}
-              />
-              <InfoCard
-                title="Demographics"
-                icon={Compass}
-                index={1}
-                items={[
-                  { label: "Social Category", value: citizen.category },
-                  { label: "Economic Category", value: citizen.economicCategory },
-                  { label: "Aadhaar", value: citizen.aadhaar },
-                  { label: "Voter ID", value: citizen.voterId },
-                ]}
-              />
-              <InfoCard
-                title="Economic Profile"
-                icon={Wallet}
-                index={2}
-                items={[
-                  { label: "Income Band", value: citizen.economicCategory === "BPL" ? "Below ₹1L / yr" : "₹3L–₹6L / yr" },
-                  { label: "Occupation", value: citizen.occupation },
-                  { label: "Ration Card", value: citizen.economicCategory === "BPL" ? "Pink (Priority)" : "White (APL)" },
-                  { label: "Skill Level", value: "Intermediate" },
-                ]}
-              />
-              <InfoCard
-                title="Location Information"
-                icon={MapPin}
-                index={3}
-                items={[
-                  { label: "Village / Ward", value: citizen.village },
-                  { label: "Mandal", value: citizen.mandal },
-                  { label: "Pincode", value: citizen.pincode },
-                  { label: "Address", value: `${citizen.village}, ${citizen.mandal}` },
-                ]}
-              />
-              <InfoCard
-                title="Constituency Mapping"
-                icon={Building2}
-                index={4}
-                items={[
-                  { label: "Lok Sabha Constituency", value: citizen.constituency },
-                  { label: "Assembly", value: "Serilingampally" },
-                  { label: "Booth", value: citizen.booth },
-                  { label: "Family ID", value: citizen.familyId },
-                ]}
-              />
-              <InfoCard
-                title="Engagement Summary"
-                icon={Briefcase}
-                index={5}
-                items={[
-                  { label: "Schemes Availed", value: `${schemes.filter((s) => s.status === "Approved").length}` },
-                  { label: "Grievances Filed", value: `${grievances.length}` },
-                  { label: "Surveys Completed", value: `${surveys.length}` },
-                  { label: "Documents on File", value: `${docs.length}` },
-                ]}
-              />
-            </motion.div>
-          </TabsContent>
-
-          <TabsContent value="family" className="mt-5">
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-              <Card className="p-5">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className="font-display text-base font-semibold">{family.headName}'s Household</h3>
-                    <p className="text-xs text-muted-foreground">{family.id} · {family.village}, {family.mandal} · {family.totalMembers} members</p>
+      <div className="space-y-5 p-4 md:p-8">
+        <Card className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
+          <Info
+            label="Mobile"
+            value={citizen.mobile_number ?? "Not recorded"}
+          />
+          <Info label="Gender" value={citizen.gender} />
+          <Info
+            label="Date of birth"
+            value={
+              citizen.date_of_birth
+                ? new Date(citizen.date_of_birth).toLocaleDateString("en-IN")
+                : "Not recorded"
+            }
+          />
+          <Info
+            label="Aadhaar"
+            value={citizen.aadhaar_masked ?? "Not recorded"}
+          />
+          <Info label="Voter ID" value={citizen.voter_id ?? "Not recorded"} />
+          <Info
+            label="Occupation"
+            value={citizen.occupation ?? "Not recorded"}
+          />
+          <Info label="Education" value={citizen.education ?? "Not recorded"} />
+          <Info label="Email" value={citizen.email ?? "Not recorded"} />
+        </Card>
+        <Card className="p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 font-semibold">
+              <MapPin className="h-4 w-4" />
+              Addresses
+            </h2>
+            {canUpdate && <CitizenAddressDialog citizenId={citizen.id} />}
+          </div>
+          <div className="mt-3 divide-y">
+            {citizen.addresses.map((address) => (
+              <div
+                key={address.id}
+                className="flex flex-wrap items-start justify-between gap-3 py-3 text-sm"
+              >
+                <div>
+                  <div className="flex items-center gap-2 font-medium">
+                    {address.address_type}
+                    <Badge variant={address.is_primary ? "default" : "outline"}>
+                      {address.is_primary ? "Primary" : "History"}
+                    </Badge>
                   </div>
-                  <Badge variant="outline">Total Benefits ₹{family.totalBenefits.toLocaleString("en-IN")}</Badge>
+                  <p className="mt-1 text-muted-foreground">
+                    {[
+                      address.house_number,
+                      address.street,
+                      address.locality,
+                      address.ward?.name,
+                      address.village?.name,
+                      address.village?.mandal?.name,
+                      address.pincode,
+                      address.district,
+                      address.state,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
                 </div>
-                <FamilyTree family={family} />
-              </Card>
-            </motion.div>
-          </TabsContent>
-
-          <TabsContent value="schemes" className="mt-5">
-            <Card className="overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Scheme</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Applied</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Benefit (₹)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {schemes.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-medium">{s.scheme}</TableCell>
-                      <TableCell className="text-muted-foreground">{s.department}</TableCell>
-                      <TableCell>{s.appliedOn}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={schemeTone[s.status]}>{s.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {s.benefitAmount ? s.benefitAmount.toLocaleString("en-IN") : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                {canUpdate && (
+                  <div className="flex gap-2">
+                    <CitizenAddressDialog
+                      citizenId={citizen.id}
+                      address={address}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={archiveAddress.isPending}
+                      onClick={() => {
+                        if (window.confirm("Archive this address?"))
+                          archiveAddress.mutate(address.id);
+                      }}
+                    >
+                      Archive
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {!citizen.addresses.length && (
+              <Empty text="No address is recorded." />
+            )}
+          </div>
+        </Card>
+        <Tabs defaultValue="schemes">
+          <TabsList className="flex flex-wrap">
+            <TabsTrigger value="schemes">
+              <FileBadge className="mr-1 h-4 w-4" />
+              Schemes
+            </TabsTrigger>
+            <TabsTrigger value="grievances">
+              <MessageSquareWarning className="mr-1 h-4 w-4" />
+              Grievances
+            </TabsTrigger>
+            <TabsTrigger value="families">
+              <Users className="mr-1 h-4 w-4" />
+              Families
+            </TabsTrigger>
+            <TabsTrigger value="appointments">
+              <CalendarDays className="mr-1 h-4 w-4" />
+              Appointments
+            </TabsTrigger>
+            <TabsTrigger value="projects">
+              <Building2 className="mr-1 h-4 w-4" />
+              Projects
+            </TabsTrigger>
+            <TabsTrigger value="documents">
+              <FileText className="mr-1 h-4 w-4" />
+              Documents
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <History className="mr-1 h-4 w-4" />
+              History
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="schemes">
+            <Card className="divide-y">
+              {citizen.scheme_applications.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid gap-2 p-4 text-sm sm:grid-cols-4"
+                >
+                  <Link
+                    to="/schemes/application-detail"
+                    search={{ id: item.id }}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {item.application_number}
+                  </Link>
+                  <span>{item.scheme?.name ?? "Scheme unavailable"}</span>
+                  <span>
+                    {new Date(item.application_date).toLocaleDateString(
+                      "en-IN",
+                    )}
+                  </span>
+                  <Badge variant="secondary" className="w-fit capitalize">
+                    {item.status.replaceAll("_", " ")}
+                  </Badge>
+                </div>
+              ))}
+              {!citizen.scheme_applications.length && (
+                <Empty text="No scheme applications are recorded." />
+              )}
             </Card>
           </TabsContent>
-
-          <TabsContent value="grievances" className="mt-5">
-            <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
-              <Card className="overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {grievances.map((g) => (
-                      <TableRow key={g.id}>
-                        <TableCell className="font-mono text-xs">{g.id}</TableCell>
-                        <TableCell>{g.category}</TableCell>
-                        <TableCell className="max-w-[280px] truncate">{g.title}</TableCell>
-                        <TableCell>{g.date}</TableCell>
-                        <TableCell><Badge variant="secondary" className={grievTone[g.status]}>{g.status}</Badge></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Card>
-              <Card className="p-5">
-                <h4 className="mb-3 font-display text-sm font-semibold">Resolution Timeline</h4>
-                <ActivityTimeline
-                  events={grievances.map((g) => ({
-                    id: g.id,
-                    date: g.date,
-                    icon: "grievance" as const,
-                    title: `${g.category} — ${g.status}`,
-                    description: g.resolution ?? g.title,
-                  }))}
-                />
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="surveys" className="mt-5">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {surveys.map((s, i) => (
-                <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05 }}>
-                  <Card className="p-4">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <ClipboardList className="h-3.5 w-3.5" />{s.date}
-                    </div>
-                    <h4 className="mt-2 font-display text-sm font-semibold">{s.survey}</h4>
-                    <div className="mt-3 flex items-end justify-between">
-                      <div>
-                        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Responses</div>
-                        <div className="font-display text-xl font-bold">{s.responses}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Completion</div>
-                        <div className="font-display text-xl font-bold text-primary">{s.completion}%</div>
-                      </div>
-                    </div>
-                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${s.completion}%` }} />
-                    </div>
-                  </Card>
-                </motion.div>
+          <TabsContent value="appointments">
+            <Card className="divide-y">
+              {citizen.appointments.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid gap-2 p-4 text-sm sm:grid-cols-4"
+                >
+                  <span className="font-mono text-xs">
+                    {item.appointment_number}
+                  </span>
+                  <span className="font-medium">{item.purpose}</span>
+                  <span>
+                    {new Date(item.requested_date).toLocaleDateString("en-IN")}
+                  </span>
+                  <Badge variant="secondary" className="w-fit capitalize">
+                    {item.status.replaceAll("_", " ")}
+                  </Badge>
+                </div>
               ))}
-            </div>
+              {!citizen.appointments.length && (
+                <Empty text="No appointment requests are recorded." />
+              )}
+            </Card>
           </TabsContent>
-
-          <TabsContent value="documents" className="mt-5">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {docs.map((d, i) => (
-                <DocumentCard key={d.id} doc={d} index={i} />
+          <TabsContent value="projects">
+            <Card className="divide-y">
+              {citizen.related_projects.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid gap-2 p-4 text-sm sm:grid-cols-4"
+                >
+                  <span className="font-mono text-xs">
+                    {item.project_number}
+                  </span>
+                  <span className="font-medium">{item.name}</span>
+                  <span>{item.village?.name ?? "Village unavailable"}</span>
+                  <Badge variant="secondary" className="w-fit capitalize">
+                    {item.status.replaceAll("_", " ")}
+                  </Badge>
+                </div>
               ))}
+              {!citizen.related_projects.length && (
+                <Empty text="No projects are related to this citizen's address." />
+              )}
+            </Card>
+          </TabsContent>
+          <TabsContent value="grievances">
+            <Card className="divide-y">
+              {citizen.grievances.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid gap-2 p-4 text-sm sm:grid-cols-4"
+                >
+                  <span className="font-mono text-xs">
+                    {item.grievance_number}
+                  </span>
+                  <span className="font-medium">{item.title}</span>
+                  <span>{item.category?.name ?? "Uncategorized"}</span>
+                  <Badge variant="secondary" className="w-fit capitalize">
+                    {item.status.replaceAll("_", " ")}
+                  </Badge>
+                </div>
+              ))}
+              {!citizen.grievances.length && (
+                <Empty text="No grievances are recorded." />
+              )}
+            </Card>
+          </TabsContent>
+          <TabsContent value="families">
+            <div className="grid gap-4 md:grid-cols-2">
+              {citizen.families.map((family) => (
+                <Card key={family.id} className="p-4">
+                  <div className="flex justify-between gap-2">
+                    <div>
+                      <h3 className="font-medium">
+                        {family.head_of_family_name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {family.family_id}
+                      </p>
+                    </div>
+                    <Badge variant="outline">
+                      {family.members_count} members
+                    </Badge>
+                  </div>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    {family.village?.name ?? "Village not recorded"}
+                  </p>
+                </Card>
+              ))}
+              {!citizen.families.length && (
+                <Empty text="No family relationship is recorded." />
+              )}
             </div>
           </TabsContent>
-
-          <TabsContent value="activity" className="mt-5">
-            <Card className="p-6">
-              <ActivityTimeline events={activity} />
+          <TabsContent value="documents">
+            <Card className="divide-y">
+              {citizen.documents.map((item) => (
+                <div key={item.id} className="flex justify-between gap-3 p-4">
+                  <div>
+                    <div className="font-medium">{item.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {item.original_name}
+                    </div>
+                  </div>
+                  <Badge variant="secondary">
+                    {item.category?.name ?? item.mime_type}
+                  </Badge>
+                </div>
+              ))}
+              {!citizen.documents.length && (
+                <Empty text="No documents are recorded." />
+              )}
+            </Card>
+          </TabsContent>
+          <TabsContent value="history">
+            <Card className="divide-y">
+              {[
+                ...citizen.activity_logs.map((item) => ({
+                  id: item.id,
+                  date: item.created_at,
+                  title: item.description,
+                  actor: item.user?.name ?? "System",
+                })),
+                ...citizen.interactions.map((item) => ({
+                  id: item.id,
+                  date: item.interaction_date,
+                  title: item.subject,
+                  actor: item.interaction_type,
+                })),
+              ]
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .map((item) => (
+                  <div key={item.id} className="p-4">
+                    <div className="flex justify-between gap-3">
+                      <span className="font-medium">{item.title}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(item.date).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <User className="h-3 w-3" />
+                      {item.actor}
+                    </p>
+                  </div>
+                ))}
+              {!citizen.activity_logs.length &&
+                !citizen.interactions.length && (
+                  <Empty text="No activity history is recorded." />
+                )}
             </Card>
           </TabsContent>
         </Tabs>
       </div>
     </>
+  );
+}
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 font-medium">{value}</div>
+    </div>
+  );
+}
+function Empty({ text }: { text: string }) {
+  return (
+    <div className="p-10 text-center text-sm text-muted-foreground">{text}</div>
+  );
+}
+function State({ text }: { text: string }) {
+  return (
+    <div className="grid min-h-[50vh] place-items-center p-8 text-center text-muted-foreground">
+      <div>
+        <AlertCircle className="mx-auto mb-3 h-8 w-8" />
+        {text}
+      </div>
+    </div>
   );
 }

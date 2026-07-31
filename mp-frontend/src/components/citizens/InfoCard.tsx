@@ -27,7 +27,9 @@ export function InfoCard({
           <div className="grid h-8 w-8 place-items-center rounded-md bg-primary/10 text-primary">
             <Icon className="h-4 w-4" />
           </div>
-          <h3 className="font-display text-sm font-semibold tracking-tight">{title}</h3>
+          <h3 className="font-display text-sm font-semibold tracking-tight">
+            {title}
+          </h3>
         </div>
         <dl className="mt-3 grid gap-3 sm:grid-cols-2">
           {items.map((it) => (
@@ -35,11 +37,17 @@ export function InfoCard({
               <dt className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 {it.label}
               </dt>
-              <dd className="mt-0.5 truncate text-sm font-medium text-foreground">{it.value}</dd>
+              <dd className="mt-0.5 truncate text-sm font-medium text-foreground">
+                {it.value}
+              </dd>
             </div>
           ))}
         </dl>
-        {footer && <div className="mt-4 border-t border-border/60 pt-3 text-xs text-muted-foreground">{footer}</div>}
+        {footer && (
+          <div className="mt-4 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+            {footer}
+          </div>
+        )}
       </Card>
     </motion.div>
   );

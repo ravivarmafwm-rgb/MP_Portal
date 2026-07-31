@@ -25,7 +25,10 @@ export function PageHeader({
     >
       <div className="px-4 pt-5 pb-4 md:px-8">
         <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Link to="/dashboard" className="flex items-center gap-1 hover:text-foreground">
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-1 hover:text-foreground"
+          >
             <Home className="h-3.5 w-3.5" />
             <span>Home</span>
           </Link>
@@ -49,10 +52,14 @@ export function PageHeader({
               {title}
             </h1>
             {description && (
-              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                {description}
+              </p>
             )}
           </div>
-          {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+          {actions && (
+            <div className="flex shrink-0 items-center gap-2">{actions}</div>
+          )}
         </div>
       </div>
     </motion.div>

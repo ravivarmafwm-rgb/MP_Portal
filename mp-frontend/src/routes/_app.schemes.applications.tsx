@@ -1,134 +1,232 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import {
-  Search, Filter, Download, Plus, Eye, MoreHorizontal,
-  FileBadge, CheckCircle2, Clock, XCircle,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  FileBadge,
+  Search,
+  XCircle,
 } from "lucide-react";
+import { useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { applications, schemeKpis } from "@/lib/scheme-data";
-import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { fetchSchemeApplications, fetchSchemeStats } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/schemes/applications")({
-  head: () => ({ meta: [{ title: "Applications — Scheme Management" }, { name: "description", content: "Enterprise application directory across all welfare schemes." }] }),
   component: ApplicationsPage,
 });
-
-const statusTone: Record<string, string> = {
-  "Submitted": "bg-info/10 text-info",
-  "Under Review": "bg-warning/15 text-warning",
-  "Verification Pending": "bg-warning/15 text-warning",
-  "Approved": "bg-success/10 text-success",
-  "Rejected": "bg-destructive/10 text-destructive",
-  "Benefit Released": "bg-primary/10 text-primary",
-  "Draft": "bg-muted text-muted-foreground",
-};
-
-const kpis = [
-  { l: "Total", v: schemeKpis.totalApplications, icon: FileBadge, tone: "bg-primary/10 text-primary" },
-  { l: "Approved", v: schemeKpis.approved, icon: CheckCircle2, tone: "bg-success/10 text-success" },
-  { l: "Pending", v: schemeKpis.pending, icon: Clock, tone: "bg-warning/15 text-warning" },
-  { l: "Rejected", v: schemeKpis.rejected, icon: XCircle, tone: "bg-destructive/10 text-destructive" },
+const statuses = [
+  "all",
+  "pending",
+  "submitted",
+  "under_review",
+  "verification_pending",
+  "approved",
+  "rejected",
 ];
 
-const statusTabs = ["All","Submitted","Under Review","Verification Pending","Approved","Rejected","Benefit Released"];
-
 function ApplicationsPage() {
-  const [q, setQ] = useState("");
-  const [tab, setTab] = useState("All");
-  const rows = useMemo(() => applications.filter(a => {
-    const matchTab = tab === "All" || a.status === tab;
-    const text = `${a.id} ${a.citizen} ${a.scheme} ${a.village} ${a.department}`.toLowerCase();
-    return matchTab && (q === "" || text.includes(q.toLowerCase()));
-  }), [q, tab]);
-
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [page, setPage] = useState(1);
+  const stats = useQuery({
+    queryKey: ["scheme-stats"],
+    queryFn: fetchSchemeStats,
+  });
+  const query = useQuery({
+    queryKey: ["scheme-applications", search, status, page],
+    queryFn: () =>
+      fetchSchemeApplications({
+        search,
+        ...(status === "all" ? {} : { status }),
+        page,
+        per_page: 20,
+      }),
+  });
+  const metrics = [
+    ["Total", stats.data?.total_applications ?? 0, FileBadge],
+    ["Approved", stats.data?.approved ?? 0, CheckCircle2],
+    ["Pending", stats.data?.pending ?? 0, Clock],
+    ["Rejected", stats.data?.rejected ?? 0, XCircle],
+  ] as const;
   return (
     <>
       <PageHeader
-        title="Applications"
-        description="26,420 applications across 12 schemes. Search, filter and drill into any case."
-        actions={
-          <>
-            <Button variant="outline" size="sm" className="gap-1.5"><Download className="h-4 w-4" /> Export</Button>
-            <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> New Application</Button>
-          </>
-        }
+        title="Scheme Applications"
+        description="Search and review recorded welfare applications."
       />
-      <div className="space-y-6 p-4 md:p-8">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {kpis.map((k, i) => (
-            <motion.div key={k.l} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <Card className="p-4">
-                <div className={cn("inline-grid h-9 w-9 place-items-center rounded-lg", k.tone)}><k.icon className="h-4 w-4" /></div>
-                <div className="mt-3 text-[11px] uppercase tracking-wider text-muted-foreground">{k.l}</div>
-                <div className="mt-1 font-display text-xl font-bold tabular-nums">{k.v.toLocaleString()}</div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        <Card className="p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[240px] flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search by citizen, scheme, village…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-8" />
-            </div>
-            <Button variant="outline" size="sm" className="gap-1.5"><Filter className="h-4 w-4" /> Advanced</Button>
+      <div className="space-y-5 p-4 md:p-8">
+        {stats.isError && (
+          <State text="Application statistics could not be loaded." />
+        )}
+        {stats.isLoading ? (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-28" />
+            ))}
           </div>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {statusTabs.map((s) => (
-              <button key={s} onClick={() => setTab(s)} className={cn("rounded-full border px-3 py-1 text-xs font-medium transition", tab === s ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted/60")}>{s}</button>
+        ) : stats.data ? (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {metrics.map(([label, value, Icon]) => (
+              <Card key={label} className="p-4">
+                <Icon className="h-5 w-5 text-primary" />
+                <div className="mt-3 text-xs text-muted-foreground">
+                  {label}
+                </div>
+                <div className="text-2xl font-bold">
+                  {value.toLocaleString()}
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : null}
+        <Card className="space-y-3 p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Application number, applicant, mobile or scheme"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {statuses.map((value) => (
+              <Button
+                key={value}
+                size="sm"
+                variant={status === value ? "default" : "outline"}
+                onClick={() => {
+                  setStatus(value);
+                  setPage(1);
+                }}
+                className="capitalize"
+              >
+                {value.replaceAll("_", " ")}
+              </Button>
             ))}
           </div>
         </Card>
-
-        <Card className="overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Application ID</TableHead>
-                <TableHead>Citizen</TableHead>
-                <TableHead>Scheme</TableHead>
-                <TableHead>Village</TableHead>
-                <TableHead>Applied</TableHead>
-                <TableHead className="text-right">Benefit</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead className="w-20"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.slice(0, 24).map((a) => (
-                <TableRow key={a.id} className="hover:bg-muted/40">
-                  <TableCell className="font-mono text-xs">{a.id}</TableCell>
-                  <TableCell className="font-medium">{a.citizen}</TableCell>
-                  <TableCell><span className="text-sm">{a.scheme}</span><div className="text-[10px] text-muted-foreground">{a.schemeCode}</div></TableCell>
-                  <TableCell>{a.village}<div className="text-[10px] text-muted-foreground">{a.mandal}</div></TableCell>
-                  <TableCell className="tabular-nums text-xs">{a.appliedOn}</TableCell>
-                  <TableCell className="text-right font-semibold tabular-nums">₹{a.benefit.toLocaleString()}</TableCell>
-                  <TableCell><Badge variant="secondary" className={cn("text-[10px]", statusTone[a.status])}>{a.status}</Badge></TableCell>
-                  <TableCell className="text-xs">{a.department}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link to="/schemes/application-detail"><Eye className="h-4 w-4" /></Link></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className="flex items-center justify-between border-t border-border/70 p-3 text-xs text-muted-foreground">
-            <span>Showing {Math.min(24, rows.length)} of {rows.length}</span>
-            <div className="flex gap-1"><Button variant="outline" size="sm">Prev</Button><Button variant="outline" size="sm">Next</Button></div>
+        {query.isLoading && (
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-12" />
+            ))}
           </div>
-        </Card>
+        )}
+        {query.isError && (
+          <State text="Applications could not be loaded. Please retry." />
+        )}
+        {query.data && (
+          <Card className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Application</TableHead>
+                  <TableHead>Applicant</TableHead>
+                  <TableHead>Scheme</TableHead>
+                  <TableHead>Village</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Sanctioned</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {query.data.data.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-mono text-xs">
+                      <Link
+                        to="/schemes/application-detail"
+                        search={{ id: row.id }}
+                        className="text-primary hover:underline"
+                      >
+                        {row.application_number}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">{row.applicant_name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {row.applicant_mobile}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {row.scheme?.name ?? "Deleted scheme"}
+                    </TableCell>
+                    <TableCell>{row.village?.name ?? "—"}</TableCell>
+                    <TableCell>
+                      {new Date(row.application_date).toLocaleDateString(
+                        "en-IN",
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="capitalize">
+                        {row.status.replaceAll("_", " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {row.sanctioned_amount
+                        ? `₹${Number(row.sanctioned_amount).toLocaleString("en-IN")}`
+                        : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {query.data.data.length === 0 && (
+              <div className="p-10 text-center text-sm text-muted-foreground">
+                No applications match the current filters.
+              </div>
+            )}
+          </Card>
+        )}
+        {query.data && query.data.meta.last_page > 1 && (
+          <div className="flex justify-between">
+            <span className="text-sm text-muted-foreground">
+              Page {page} of {query.data.meta.last_page}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                disabled={page === 1}
+                onClick={() => setPage((v) => v - 1)}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                disabled={page === query.data.meta.last_page}
+                onClick={() => setPage((v) => v + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </>
+  );
+}
+function State({ text }: { text: string }) {
+  return (
+    <div className="py-16 text-center text-muted-foreground">
+      <AlertCircle className="mx-auto mb-3 h-8 w-8" />
+      {text}
+    </div>
   );
 }
