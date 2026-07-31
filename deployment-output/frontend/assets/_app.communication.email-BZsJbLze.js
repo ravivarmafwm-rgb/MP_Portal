@@ -1,0 +1,1 @@
+import{r as e}from"./useRouter-C7pTCAcE.js";import{t}from"./CommunicationChannelPage-CG_FN79u.js";var n=e(),r=()=>(0,n.jsx)(t,{channel:`email`});export{r as component};
