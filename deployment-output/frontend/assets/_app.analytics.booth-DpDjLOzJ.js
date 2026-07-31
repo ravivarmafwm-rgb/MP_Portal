@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-C7pTCAcE.js";import{r as t}from"./index-DSGUd9YH.js";import{t as n}from"./AnalyticsReportPage-rtrQ7MhJ.js";var r=e();function i(){return(0,r.jsx)(n,{report:t.useLoaderData(),title:`Booth Analytics`,description:`Polling-booth citizen, family, voter and grievance metrics within your authorized geography.`})}export{i as component};

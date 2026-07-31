@@ -431,4 +431,15 @@ The active delivery scope now includes desktop, tablet, and mobile responsive we
 - Added `--create-missing` to the project lookup backfill command; legacy category/type values were safely promoted into lookup records and all 14 project records were linked without unmapped values.
 - Backend tests remain green (52 tests, 340 assertions), frontend build remains green, and both local services return HTTP 200.
 
+## 39. Hostinger Flat Deployment Package (2026-07-31)
+
+- Audited the current Laravel and React source before packaging; no application business logic or API implementation was changed.
+- Regenerated `deployment-output/backend-public-html/` for direct upload into the domain's Hostinger `public_html`. The Laravel application and public assets are flattened at one level; `index.php` uses `vendor/autoload.php` and `bootstrap/app.php` paths without `../` references.
+- Included production Composer dependencies (`composer install --no-dev --optimize-autoloader`) and deployment guidance/security actions. The current backend `.env` was copied into the package at the user's explicit request; it must be reviewed and credential-rotated before upload. Tests, VCS metadata, node_modules, source maps, logs, and bootstrap cache PHP artifacts are excluded.
+- Because shared hosting may not permit symlinks, public storage contents were merged into `storage/app/public`; the root storage tree remains protected and application download endpoints should enforce authorization.
+- Backend verification passed: Composer autoload generation, Laravel boot/version check, route inspection, PHP syntax check, source migration run with no pending migrations, and artifact structure/security checks. Cache clear was verified against a temporary SQLite schema and the temporary database was removed from the artifact.
+- Frontend deployment artifacts were intentionally not generated. `npm run build` passed, production environment files point to `https://mpportaldashboard.focuswebmedia.in/api`, and no localhost references were found in `src`.
+- `npm run lint` remains a pre-existing source issue: ESLint reports widespread CRLF/Prettier errors and one existing Fast Refresh warning. It was not altered because this task is deployment packaging only.
+- This package represents the verified current source state and does not change the report's existing completion percentages or claim that all master business requirements are complete.
+
 **Next Approved Task:** Data/API contracts — complete project legacy lookup backfill, canonical API resources/versioning, validation consistency, and export authorization. Do not begin until approved.

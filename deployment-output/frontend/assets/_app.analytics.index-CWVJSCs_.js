@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-C7pTCAcE.js";import{E as t}from"./index-DSGUd9YH.js";import{t as n}from"./AnalyticsReportPage-rtrQ7MhJ.js";var r=e();function i(){return(0,r.jsx)(n,{report:t.useLoaderData(),title:`Parliamentary Analytics`,description:`Scoped constituency metrics with assembly, mandal, village and booth drill-downs.`})}export{i as component};
