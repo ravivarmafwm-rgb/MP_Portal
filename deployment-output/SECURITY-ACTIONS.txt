@@ -1,9 +1,0 @@
-REQUIRED SECURITY ACTIONS
-
-1. Rotate the previously exposed Supabase secret/service-role key.
-2. Rotate the PostgreSQL password previously shared externally.
-3. Remove production credentials from frontend files and deployment history. Only browser-safe public values may use a VITE_ prefix.
-4. Avoid fixed admin credentials in production seeders.
-5. Change any accounts created with predictable seeded passwords.
-
-The frontend deployment bundle was checked for the removed secret variable, service-role markers, and database/backend secret names. Never place Laravel APP_KEY, database passwords, private tokens, or service-role keys in frontend environment files.
