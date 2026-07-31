@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-C7pTCAcE.js";import{t}from"./MpCommandCenter-CmP-BcH6.js";import{t as n}from"./RoleGuard-kXv2xixG.js";var r=e();function i(){return(0,r.jsx)(n,{route:`/admin`,children:(0,r.jsx)(t,{title:`Admin Command Center`})})}export{i as component};
