@@ -1,6 +1,6 @@
 <IfModule mod_rewrite.c>
-    Options -MultiViews -Indexes
     RewriteEngine On
+    RewriteBase /
 
     RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
     RewriteRule ^ - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-TOKEN}]
@@ -15,6 +15,10 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+</IfModule>
+
+<IfModule mod_autoindex.c>
+    IndexIgnore *
 </IfModule>
 
 <IfModule mod_headers.c>
