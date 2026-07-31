@@ -1,37 +1,43 @@
-MP Constituency Management System — Hostinger/cPanel Security Actions
+HOSTINGER SECURITY ACTIONS
 
-Runtime
-- PHP 8.3+; Composer 2.x; Node.js 20 LTS only for build-time.
-- PHP extensions: Ctype, cURL, DOM, Fileinfo, Filter, Hash, Mbstring, OpenSSL, PCRE, PDO, pdo_pgsql, Session, Tokenizer, XML, JSON.
+Required runtime
+- PHP 8.3+ (confirm the exact constraint in composer.json before selecting the hPanel PHP version).
+- Composer 2.x for host-side dependency installation.
+- PHP extensions: pdo, pdo_pgsql, mbstring, openssl, tokenizer, xml, ctype, json, fileinfo, curl, intl, and zip.
 
 Permissions
-- Directories: 755.
-- Files: 644.
-- `mp-dashboard/storage/`: 775.
-- `mp-dashboard/bootstrap/cache/`: 775.
-- Never make the application root world-writable.
+- Directories: 755
+- Files: 644
+- storage/: 775 (including storage/app, storage/framework, and storage/logs)
+- bootstrap/cache/: 775
+- Never make .env, vendor, or configuration files world-writable.
 
-Required commands from `/home/USERNAME/mp-dashboard/`
-- `php artisan storage:link`
-- `php artisan optimize:clear`
-- `php artisan config:cache`
-- `php artisan route:cache`
-- `php artisan view:cache`
-- `php artisan optimize`
-- `composer install --no-dev --optimize-autoloader`
-- `php artisan migrate --force`
+Required production settings
+- APP_ENV=production
+- APP_DEBUG=false
+- APP_URL=https://mpportaldashboard.focuswebmedia.in
+- PostgreSQL DB_* values
+- Strong APP_KEY
+- Production CORS/Sanctum stateful domains and frontend API URL
+- Mail, queue, cache, filesystem, and notification credentials
 
-Scheduler/queue
-- Cron every minute: `* * * * * cd /home/USERNAME/mp-dashboard && php artisan schedule:run >> /dev/null 2>&1`
-- Queue worker: `php artisan queue:work --sleep=3 --tries=3 --timeout=120` under Supervisor or the hosting provider's process manager.
-- Restart after deployment: `php artisan queue:restart` and restart PHP-FPM if available.
+Safe commands (when terminal access is available)
+- php artisan optimize:clear
+- php artisan config:cache
+- php artisan route:cache
+- php artisan view:cache
+- php artisan migrate --force
+- composer dump-autoload -o
 
-Environment
-- Set `APP_ENV=production`, `APP_DEBUG=false`, `APP_KEY`, `APP_URL`, `FRONTEND_URL`, PostgreSQL `DB_*`, `SESSION_SECURE_COOKIE=true`, `SESSION_HTTP_ONLY=true`, `SANCTUM_STATEFUL_DOMAINS`, `SANCTUM_EXPIRATION`, `QUEUE_CONNECTION`, `CACHE_STORE`, `FILESYSTEM_DISK`, CORS, mail, and communication provider variables.
-- Do not upload `.env`; create it on the server from `.env.example` and rotate any leaked local credentials.
+Storage and jobs
+- No storage symlink is required by this flattened package.
+- Keep storage protected by the included .htaccess; use authorized application download routes.
+- Configure the Laravel scheduler cron (`php artisan schedule:run`) every minute if scheduled jobs are enabled.
+- Run a queue worker for the configured driver if asynchronous notifications/jobs are enabled; supervise and restart it after deploys.
 
-Web security
-- Point the domain only to `/home/USERNAME/public_html`.
-- Keep `/home/USERNAME/mp-dashboard` private and deny directory listings.
-- Use HTTPS, HSTS, secure cookies, database network restrictions, WAF/rate limits, and current PHP patches.
-- Back up PostgreSQL and private document storage before migrations; test restoration.
+Security operations
+- Force HTTPS at the domain level and enable the commented redirect block in .htaccess only if required by the host.
+- Restrict database access to the hosting account and rotate credentials periodically.
+- Maintain off-site backups of PostgreSQL and storage/app.
+- Review upload limits, PHP error logs, failed jobs, and authentication logs after deployment.
+- The package includes `.env` at the user's request. Review and rotate all credentials before upload; never expose it over HTTP. Do not upload tests, .git, node_modules, or source maps.
