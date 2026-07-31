@@ -12,13 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DocumentUploadDialog } from "@/components/documents/DocumentUploadDialog";
+import { DocumentVersionsDialog } from "@/components/documents/DocumentVersionsDialog";
 import { toast } from "sonner";
 
 export function DocumentRepository({
   type,
   documentableId,
 }: {
-  type?: "citizen" | "project";
+  type?: "citizen" | "project" | "grievance";
   documentableId?: string;
 }) {
   const [search, setSearch] = useState("");
@@ -116,6 +117,7 @@ export function DocumentRepository({
                       <Download className="mr-1 h-3.5 w-3.5" />
                       Download
                     </Button>
+                    <DocumentVersionsDialog documentId={document.id} />
                     <Button
                       size="icon"
                       variant="ghost"

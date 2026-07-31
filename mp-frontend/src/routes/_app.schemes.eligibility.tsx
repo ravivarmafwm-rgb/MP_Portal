@@ -1,17 +1,28 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertCircle, BadgeCheck, FileWarning } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchSchemeEligibilityRules } from "@/lib/api";
+import {
+  deleteSchemeEligibilityRule,
+  deleteSchemeRequiredDocument,
+  fetchSchemeEligibilityRules,
+  getApiErrorMessage,
+} from "@/lib/api";
+import { SchemeEligibilityRuleDialog } from "@/components/schemes/SchemeEligibilityRuleDialog";
+import { SchemeRequiredDocumentDialog } from "@/components/schemes/SchemeRequiredDocumentDialog";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/schemes/eligibility")({
   component: EligibilityPage,
 });
 
 function EligibilityPage() {
+  const client = useQueryClient();
   const query = useQuery({
     queryKey: ["scheme-eligibility-rules"],
     queryFn: fetchSchemeEligibilityRules,
@@ -59,6 +70,10 @@ function EligibilityPage() {
               <Badge variant="secondary">
                 {scheme.eligibility_rules?.length ?? 0} structured rules
               </Badge>
+              <div className="flex gap-2">
+                <SchemeEligibilityRuleDialog schemeId={scheme.id} />
+                <SchemeRequiredDocumentDialog schemeId={scheme.id} />
+              </div>
             </div>
             {scheme.eligibility && (
               <div className="mt-4 rounded-md bg-muted/40 p-3 text-sm">
@@ -95,6 +110,30 @@ function EligibilityPage() {
                         </p>
                       )}
                     </div>
+                    <div className="ml-auto flex shrink-0 gap-1">
+                      <SchemeEligibilityRuleDialog
+                        schemeId={scheme.id}
+                        rule={{
+                          id: rule.id,
+                          rule_name: rule.rule_name,
+                          field_name: rule.field_name!,
+                          operator: rule.operator!,
+                          value: rule.value!,
+                          is_mandatory: rule.is_mandatory,
+                          sort_order: rule.sort_order ?? 0,
+                          error_message: rule.error_message ?? "",
+                        }}
+                      />
+                      <DeleteRule
+                        schemeId={scheme.id}
+                        ruleId={rule.id}
+                        onDone={() =>
+                          client.invalidateQueries({
+                            queryKey: ["scheme-eligibility-rules"],
+                          })
+                        }
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -106,9 +145,118 @@ function EligibilityPage() {
                 </div>
               )
             )}
+            <div className="mt-5">
+              <h3 className="font-medium">Required application documents</h3>
+              {scheme.required_documents?.length ? (
+                <div className="mt-2 divide-y rounded-md border">
+                  {scheme.required_documents.map((requirement) => (
+                    <div
+                      key={requirement.id}
+                      className="flex items-center justify-between gap-3 p-3 text-sm"
+                    >
+                      <div>
+                        <span className="font-medium">{requirement.name}</span>
+                        <span className="ml-2 text-muted-foreground">
+                          {requirement.document_category?.name}
+                        </span>
+                        {requirement.is_mandatory && (
+                          <Badge variant="destructive" className="ml-2">
+                            Mandatory
+                          </Badge>
+                        )}
+                        {requirement.max_age_days && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            Max age {requirement.max_age_days} days
+                          </span>
+                        )}
+                      </div>
+                      <DeleteRequirement
+                        schemeId={scheme.id}
+                        requirementId={requirement.id}
+                        onDone={() =>
+                          client.invalidateQueries({
+                            queryKey: ["scheme-eligibility-rules"],
+                          })
+                        }
+                      />
+                      <SchemeRequiredDocumentDialog
+                        schemeId={scheme.id}
+                        requirement={requirement}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  No structured document requirements configured.
+                </p>
+              )}
+            </div>
           </Card>
         ))}
       </div>
     </>
+  );
+}
+
+function DeleteRule({
+  schemeId,
+  ruleId,
+  onDone,
+}: {
+  schemeId: string;
+  ruleId: string;
+  onDone: () => Promise<unknown>;
+}) {
+  const mutation = useMutation({
+    mutationFn: () => deleteSchemeEligibilityRule(schemeId, ruleId),
+    onSuccess: async () => {
+      toast.success("Rule deleted.");
+      await onDone();
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      disabled={mutation.isPending}
+      onClick={() =>
+        window.confirm("Delete this eligibility rule?") && mutation.mutate()
+      }
+    >
+      <Trash2 className="h-4 w-4 text-destructive" />
+    </Button>
+  );
+}
+
+function DeleteRequirement({
+  schemeId,
+  requirementId,
+  onDone,
+}: {
+  schemeId: string;
+  requirementId: string;
+  onDone: () => Promise<unknown>;
+}) {
+  const mutation = useMutation({
+    mutationFn: () => deleteSchemeRequiredDocument(schemeId, requirementId),
+    onSuccess: async () => {
+      toast.success("Document requirement deleted.");
+      await onDone();
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      disabled={mutation.isPending}
+      onClick={() =>
+        window.confirm("Delete this document requirement?") && mutation.mutate()
+      }
+    >
+      <Trash2 className="h-4 w-4 text-destructive" />
+    </Button>
   );
 }

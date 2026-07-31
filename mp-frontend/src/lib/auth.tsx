@@ -5,27 +5,30 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { apiLogin, apiLogout, apiMe, apiRegister, type AuthUser } from "./api";
 import {
-  clearStoredAuth,
-  getStoredAuth,
+  apiLogin,
+  apiLogout,
+  apiMe,
+  apiRegister,
+  type AuthUser,
+  type CitizenRegistrationInput,
+} from "./api";
+import {
+  clearLegacyAuthStorage,
   initActivityTracking,
-  setStoredAuth,
   touchActivity,
 } from "./auth-storage";
 
 interface AuthContextValue {
   user: AuthUser | null;
-  token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<AuthUser>;
-  register: (
-    name: string,
+  login: (
     email: string,
     password: string,
-    password_confirmation: string,
+    mfaCode?: string,
   ) => Promise<AuthUser>;
+  register: (input: CitizenRegistrationInput) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -33,78 +36,39 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const stored = getStoredAuth();
-  const [user, setUser] = useState<AuthUser | null>(stored.user);
-  const [token, setToken] = useState<string | null>(stored.token);
-  const [isLoading, setIsLoading] = useState(!!stored.token);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Always validate token with server on mount
+  // The credential is HttpOnly; session state is resolved exclusively by the API.
   useEffect(() => {
-    const { token: storedToken } = getStoredAuth();
-    if (!storedToken) {
-      setIsLoading(false);
-      return;
-    }
-
+    clearLegacyAuthStorage();
     setIsLoading(true);
     apiMe()
       .then((u) => {
         setUser(u);
-        setToken(storedToken);
-        setStoredAuth(storedToken, u);
         touchActivity();
       })
       .catch(() => {
-        setToken(null);
         setUser(null);
-        clearStoredAuth();
       })
       .finally(() => setIsLoading(false));
   }, []);
 
   // Auto logout on inactivity
   useEffect(() => {
-    if (!token) return;
+    if (!user) return;
     return initActivityTracking(() => {
       apiLogout().catch(() => {});
-      setToken(null);
       setUser(null);
-      clearStoredAuth();
       window.location.href = "/login";
     });
-  }, [token]);
+  }, [user]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const data = await apiLogin(email, password);
-      setStoredAuth(data.access_token, data.user);
-      setToken(data.access_token);
-      setUser(data.user);
-      touchActivity();
-      return data.user;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const register = useCallback(
-    async (
-      name: string,
-      email: string,
-      password: string,
-      password_confirmation: string,
-    ) => {
+  const login = useCallback(
+    async (email: string, password: string, mfaCode?: string) => {
       setIsLoading(true);
       try {
-        const data = await apiRegister(
-          name,
-          email,
-          password,
-          password_confirmation,
-        );
-        setStoredAuth(data.access_token, data.user);
-        setToken(data.access_token);
+        const data = await apiLogin(email, password, mfaCode);
         setUser(data.user);
         touchActivity();
         return data.user;
@@ -115,31 +79,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const register = useCallback(async (input: CitizenRegistrationInput) => {
+    setIsLoading(true);
+    try {
+      const data = await apiRegister(input);
+      setUser(data.user);
+      touchActivity();
+      return data.user;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await apiLogout();
     } catch {
       /* ignore */
     }
-    setToken(null);
     setUser(null);
-    clearStoredAuth();
   }, []);
 
   const refreshUser = useCallback(async () => {
     const u = await apiMe();
     setUser(u);
-    if (token) setStoredAuth(token, u);
     touchActivity();
-  }, [token]);
+  }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        token,
         isLoading,
-        isAuthenticated: !!token && !!user,
+        isAuthenticated: !!user,
         login,
         register,
         logout,

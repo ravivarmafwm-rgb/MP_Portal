@@ -1,14 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
+  CalendarDays,
   FileBadge,
   FileText,
   History,
   MapPin,
   MessageSquareWarning,
+  Building2,
   User,
   Users,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +19,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { fetchCitizen } from "@/lib/api";
+import {
+  deleteCitizen,
+  deleteCitizenAddress,
+  fetchCitizen,
+  getApiErrorMessage,
+} from "@/lib/api";
+import { CitizenEditDialog } from "@/components/citizens/CitizenEditDialog";
+import { CitizenAddressDialog } from "@/components/citizens/CitizenAddressDialog";
+import { useAuth } from "@/lib/auth";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/citizens/profile")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -27,6 +39,32 @@ export const Route = createFileRoute("/_app/citizens/profile")({
 
 function CitizenProfilePage() {
   const { id } = Route.useSearch();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const canUpdate = [
+    "super-admin",
+    "mp-staff",
+    "constituency-coordinator",
+    "assembly-coordinator",
+    "mandal-coordinator",
+    "village-coordinator",
+  ].includes(user?.role_slug ?? "");
+  const archive = useMutation({
+    mutationFn: deleteCitizen,
+    onSuccess: async () => {
+      toast.success("Citizen record archived.");
+      await navigate({ to: "/citizens/list" });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+  const archiveAddress = useMutation({
+    mutationFn: (addressId: string) => deleteCitizenAddress(id!, addressId),
+    onSuccess: async () => {
+      toast.success("Address archived.");
+      await query.refetch();
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
   const query = useQuery({
     queryKey: ["citizen", id],
     queryFn: () => fetchCitizen(id!),
@@ -58,9 +96,28 @@ function CitizenProfilePage() {
         title={name}
         description={`Citizen ID ${citizen.unique_id}`}
         actions={
-          <Button asChild variant="outline">
-            <Link to="/citizens/list">Back to directory</Link>
-          </Button>
+          <>
+            {canUpdate && <CitizenEditDialog citizen={citizen} />}
+            {user?.role_slug === "super-admin" && (
+              <Button
+                variant="destructive"
+                disabled={archive.isPending}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Archive this citizen? Records with linked operational history cannot be archived.",
+                    )
+                  )
+                    archive.mutate(citizen.id);
+                }}
+              >
+                <Trash2 className="h-4 w-4" /> Archive
+              </Button>
+            )}
+            <Button asChild variant="outline">
+              <Link to="/citizens/list">Back to directory</Link>
+            </Button>
+          </>
         }
       />
       <div className="space-y-5 p-4 md:p-8">
@@ -91,27 +148,67 @@ function CitizenProfilePage() {
           <Info label="Email" value={citizen.email ?? "Not recorded"} />
         </Card>
         <Card className="p-5">
-          <h2 className="flex items-center gap-2 font-semibold">
-            <MapPin className="h-4 w-4" />
-            Primary address
-          </h2>
-          {primary ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              {[
-                primary.house_number,
-                primary.street,
-                primary.locality,
-                primary.ward?.name,
-                primary.village?.name,
-                primary.village?.mandal?.name,
-                primary.pincode,
-              ]
-                .filter(Boolean)
-                .join(", ")}
-            </p>
-          ) : (
-            <Empty text="No address is recorded." />
-          )}
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 font-semibold">
+              <MapPin className="h-4 w-4" />
+              Addresses
+            </h2>
+            {canUpdate && <CitizenAddressDialog citizenId={citizen.id} />}
+          </div>
+          <div className="mt-3 divide-y">
+            {citizen.addresses.map((address) => (
+              <div
+                key={address.id}
+                className="flex flex-wrap items-start justify-between gap-3 py-3 text-sm"
+              >
+                <div>
+                  <div className="flex items-center gap-2 font-medium">
+                    {address.address_type}
+                    <Badge variant={address.is_primary ? "default" : "outline"}>
+                      {address.is_primary ? "Primary" : "History"}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">
+                    {[
+                      address.house_number,
+                      address.street,
+                      address.locality,
+                      address.ward?.name,
+                      address.village?.name,
+                      address.village?.mandal?.name,
+                      address.pincode,
+                      address.district,
+                      address.state,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                </div>
+                {canUpdate && (
+                  <div className="flex gap-2">
+                    <CitizenAddressDialog
+                      citizenId={citizen.id}
+                      address={address}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={archiveAddress.isPending}
+                      onClick={() => {
+                        if (window.confirm("Archive this address?"))
+                          archiveAddress.mutate(address.id);
+                      }}
+                    >
+                      Archive
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {!citizen.addresses.length && (
+              <Empty text="No address is recorded." />
+            )}
+          </div>
         </Card>
         <Tabs defaultValue="schemes">
           <TabsList className="flex flex-wrap">
@@ -126,6 +223,14 @@ function CitizenProfilePage() {
             <TabsTrigger value="families">
               <Users className="mr-1 h-4 w-4" />
               Families
+            </TabsTrigger>
+            <TabsTrigger value="appointments">
+              <CalendarDays className="mr-1 h-4 w-4" />
+              Appointments
+            </TabsTrigger>
+            <TabsTrigger value="projects">
+              <Building2 className="mr-1 h-4 w-4" />
+              Projects
             </TabsTrigger>
             <TabsTrigger value="documents">
               <FileText className="mr-1 h-4 w-4" />
@@ -163,6 +268,52 @@ function CitizenProfilePage() {
               ))}
               {!citizen.scheme_applications.length && (
                 <Empty text="No scheme applications are recorded." />
+              )}
+            </Card>
+          </TabsContent>
+          <TabsContent value="appointments">
+            <Card className="divide-y">
+              {citizen.appointments.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid gap-2 p-4 text-sm sm:grid-cols-4"
+                >
+                  <span className="font-mono text-xs">
+                    {item.appointment_number}
+                  </span>
+                  <span className="font-medium">{item.purpose}</span>
+                  <span>
+                    {new Date(item.requested_date).toLocaleDateString("en-IN")}
+                  </span>
+                  <Badge variant="secondary" className="w-fit capitalize">
+                    {item.status.replaceAll("_", " ")}
+                  </Badge>
+                </div>
+              ))}
+              {!citizen.appointments.length && (
+                <Empty text="No appointment requests are recorded." />
+              )}
+            </Card>
+          </TabsContent>
+          <TabsContent value="projects">
+            <Card className="divide-y">
+              {citizen.related_projects.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid gap-2 p-4 text-sm sm:grid-cols-4"
+                >
+                  <span className="font-mono text-xs">
+                    {item.project_number}
+                  </span>
+                  <span className="font-medium">{item.name}</span>
+                  <span>{item.village?.name ?? "Village unavailable"}</span>
+                  <Badge variant="secondary" className="w-fit capitalize">
+                    {item.status.replaceAll("_", " ")}
+                  </Badge>
+                </div>
+              ))}
+              {!citizen.related_projects.length && (
+                <Empty text="No projects are related to this citizen's address." />
               )}
             </Card>
           </TabsContent>

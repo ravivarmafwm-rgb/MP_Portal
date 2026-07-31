@@ -1,5 +1,4 @@
 import axios from "axios";
-import { clearStoredAuth } from "./auth-storage";
 
 const API_URL =
   import.meta.env.VITE_API_URL ??
@@ -8,7 +7,7 @@ const API_URL =
 export const api = axios.create({
   baseURL: API_URL,
   headers: { "Content-Type": "application/json", Accept: "application/json" },
-  withCredentials: false,
+  withCredentials: true,
 });
 
 export function getApiErrorMessage(
@@ -29,9 +28,31 @@ export function getApiErrorMessage(
 }
 
 // ── Attach token on every request ─────────────────────────────────────────────
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("mp_token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+let csrfToken: string | null = null;
+let csrfRequest: Promise<string> | null = null;
+
+async function ensureCsrfToken(): Promise<string> {
+  if (csrfToken) return csrfToken;
+  if (!csrfRequest) {
+    csrfRequest = api
+      .get<{ csrf_token: string }>("/auth/csrf")
+      .then((response) => {
+        csrfToken = response.data.csrf_token;
+        return csrfToken;
+      })
+      .finally(() => {
+        csrfRequest = null;
+      });
+  }
+  return csrfRequest;
+}
+
+api.interceptors.request.use(async (config) => {
+  if (
+    !["get", "head", "options"].includes(config.method?.toLowerCase() ?? "get")
+  ) {
+    config.headers.set("X-CSRF-TOKEN", await ensureCsrfToken());
+  }
   return config;
 });
 
@@ -39,10 +60,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      clearStoredAuth();
-      window.location.href = "/login";
-    }
+    if (error.response?.status === 419) csrfToken = null;
     return Promise.reject(error);
   },
 );
@@ -54,35 +72,74 @@ export interface AuthUser {
   email: string;
   role: string;
   role_slug: string;
+  citizen_id?: string | null;
   initials: string;
 }
 
-export async function apiLogin(email: string, password: string) {
-  const res = await api.post("/login", { email, password });
+export async function apiLogin(
+  email: string,
+  password: string,
+  mfaCode?: string,
+) {
+  const res = await api.post("/login", {
+    email,
+    password,
+    ...(mfaCode ? { mfa_code: mfaCode } : {}),
+  });
   return res.data as {
-    access_token: string;
-    token_type: string;
     user: AuthUser;
   };
 }
 
-export async function apiRegister(
-  name: string,
-  email: string,
-  password: string,
-  password_confirmation: string,
-) {
-  const res = await api.post("/register", {
-    name,
-    email,
-    password,
-    password_confirmation,
-  });
+export interface CitizenRegistrationInput {
+  first_name: string;
+  last_name: string;
+  email: string;
+  mobile_number: string;
+  date_of_birth: string;
+  gender: "Male" | "Female" | "Other";
+  password: string;
+  password_confirmation: string;
+}
+
+export async function apiRegister(input: CitizenRegistrationInput) {
+  const res = await api.post("/register", input);
   return res.data as {
-    access_token: string;
-    token_type: string;
     user: AuthUser;
   };
+}
+
+export interface MyCitizenRecord {
+  id: string;
+  unique_id: string;
+  first_name: string;
+  middle_name?: string | null;
+  last_name: string;
+  date_of_birth?: string | null;
+  gender: string;
+  mobile_number?: string | null;
+  email?: string | null;
+  aadhaar_masked?: string | null;
+  voter_id?: string | null;
+  primary_address?: {
+    house_number?: string | null;
+    street?: string | null;
+    locality?: string | null;
+    pincode?: string | null;
+    village?: string | null;
+    ward?: string | null;
+  } | null;
+  counts: {
+    grievances: number;
+    scheme_applications: number;
+    survey_responses: number;
+    documents: number;
+  };
+}
+
+export async function fetchMyCitizen() {
+  const res = await api.get("/citizen/me");
+  return res.data as MyCitizenRecord;
 }
 
 export interface PublicStatistics {
@@ -161,8 +218,11 @@ export async function reviewVolunteerApplication(
 }
 
 export async function apiLogout() {
-  await api.post("/logout");
-  clearStoredAuth();
+  try {
+    await api.post("/logout");
+  } finally {
+    csrfToken = null;
+  }
 }
 
 export async function apiMe(): Promise<AuthUser> {
@@ -245,6 +305,9 @@ export interface CitizenDetailRecord {
   addresses: Array<{
     id: string;
     address_type: string;
+    village_id?: string | null;
+    ward_id?: string | null;
+    polling_booth_id?: string | null;
     house_number?: string | null;
     street?: string | null;
     locality?: string | null;
@@ -255,6 +318,14 @@ export interface CitizenDetailRecord {
       mandal?: { id: string; name: string };
     } | null;
     ward?: { id: string; name: string } | null;
+    landmark?: string | null;
+    post_office?: string | null;
+    district?: string | null;
+    state?: string | null;
+    country?: string | null;
+    is_primary?: boolean;
+    valid_from?: string | null;
+    valid_to?: string | null;
   }>;
   families: FamilyRecord[];
   grievances: Array<{
@@ -270,6 +341,23 @@ export interface CitizenDetailRecord {
     id: string;
     response_date: string;
     survey?: { id: string; title: string } | null;
+  }>;
+  appointments: Array<{
+    id: string;
+    appointment_number: string;
+    purpose: string;
+    requested_date: string;
+    status: string;
+    meeting_type?: string;
+    follow_up_required?: boolean;
+  }>;
+  related_projects: Array<{
+    id: string;
+    project_number: string;
+    name: string;
+    status: string;
+    progress_percentage?: string | number;
+    village?: { id: string; name: string } | null;
   }>;
   interactions: Array<{
     id: string;
@@ -300,9 +388,140 @@ export async function fetchCitizen(id: string) {
   return res.data as CitizenDetailRecord;
 }
 
+export async function updateCitizen(id: string, data: Record<string, unknown>) {
+  const res = await api.put(`/citizens/${id}`, data);
+  return res.data as CitizenDetailRecord;
+}
+
+export async function deleteCitizen(id: string) {
+  await api.delete(`/citizens/${id}`);
+}
+
+export interface CitizenAddressInput {
+  address_type: string;
+  village_id?: string | null;
+  ward_id?: string | null;
+  polling_booth_id?: string | null;
+  house_number?: string | null;
+  street?: string | null;
+  locality?: string | null;
+  landmark?: string | null;
+  post_office?: string | null;
+  pincode: string;
+  district: string;
+  state: string;
+  country?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  is_primary?: boolean;
+  valid_from?: string | null;
+  valid_to?: string | null;
+}
+
+export async function createCitizenAddress(
+  citizenId: string,
+  data: CitizenAddressInput,
+) {
+  const res = await api.post(`/citizens/${citizenId}/addresses`, data);
+  return res.data;
+}
+export async function updateCitizenAddress(
+  citizenId: string,
+  addressId: string,
+  data: Partial<CitizenAddressInput>,
+) {
+  const res = await api.put(
+    `/citizens/${citizenId}/addresses/${addressId}`,
+    data,
+  );
+  return res.data;
+}
+export async function deleteCitizenAddress(
+  citizenId: string,
+  addressId: string,
+) {
+  await api.delete(`/citizens/${citizenId}/addresses/${addressId}`);
+}
+
 export async function fetchCitizenStats() {
   const res = await api.get("/citizens/stats");
   return res.data;
+}
+
+export async function downloadCitizenDirectory(
+  params?: Record<string, string>,
+) {
+  const res = await api.get("/citizens/export", {
+    params,
+    responseType: "blob",
+  });
+  const url = URL.createObjectURL(res.data as Blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `citizen-directory-${new Date().toISOString().slice(0, 10)}.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export interface CitizenImportBatch {
+  id: string;
+  original_filename: string;
+  status: "queued" | "processing" | "completed" | "failed";
+  total_rows: number;
+  processed_rows: number;
+  accepted_rows: number;
+  rejected_rows: number;
+  error_message?: string | null;
+  created_at: string;
+  completed_at?: string | null;
+}
+
+export async function importCitizens(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await api.post("/citizens/import", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data as CitizenImportBatch;
+}
+
+export async function fetchCitizenImports(
+  params?: Record<string, string | number>,
+) {
+  const res = await api.get("/citizens/imports", { params });
+  return res.data as { data: CitizenImportBatch[]; meta: PaginationMeta };
+}
+
+export async function fetchCitizenImport(id: string) {
+  const res = await api.get("/citizens/imports/" + id);
+  return res.data as CitizenImportBatch & {
+    pending_rows: number;
+    rejected_rows: number;
+  };
+}
+
+export async function downloadCitizenImportErrors(id: string) {
+  const res = await api.get("/citizens/imports/" + id + "/errors", {
+    responseType: "blob",
+  });
+  const url = URL.createObjectURL(res.data as Blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "citizen-import-errors-" + id + ".csv";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function bulkUpdateCitizens(data: Record<string, unknown>) {
+  const res = await api.post("/citizens/bulk-update", data);
+  return res.data as { updated: number };
+}
+
+export async function bulkArchiveCitizens(citizenIds: string[]) {
+  const res = await api.post("/citizens/bulk-archive", {
+    citizen_ids: citizenIds,
+  });
+  return res.data as { archived: number };
 }
 
 export interface CensusRecord {
@@ -399,6 +618,27 @@ export interface GrievanceRecord {
   assigned_department?: { id: string; name: string } | null;
   subject?: string | null;
   resolution_summary?: string | null;
+  due_date?: string | null;
+  assigned_to?: { id: string; name: string } | null;
+  assignments?: Array<{
+    id: string;
+    status: string;
+    instructions?: string | null;
+    assigned_date: string;
+    due_date?: string | null;
+    assigned_to?: { id: string; name: string } | null;
+    assigned_by?: { id: string; name: string } | null;
+    department?: { id: string; name: string } | null;
+  }>;
+  updates?: Array<{
+    id: string;
+    update_type: string;
+    from_status?: string | null;
+    to_status: string;
+    remarks?: string | null;
+    created_at: string;
+    updated_by?: { id: string; name: string } | null;
+  }>;
 }
 export interface GrievanceCategoryRecord {
   [key: string]: unknown;
@@ -428,6 +668,29 @@ export async function fetchGrievanceStats() {
   return res.data;
 }
 
+export interface GrievanceAnalytics {
+  weekly_trend: Array<{ week: string; submitted: number; resolved: number }>;
+  assembly: Array<{
+    id: string;
+    name: string;
+    complaints: number;
+    resolved: number;
+    resolution_rate: number | null;
+  }>;
+  departments: Array<{
+    id: string;
+    name: string;
+    total: number;
+    resolved: number;
+    sla_compliance: number | null;
+  }>;
+}
+
+export async function fetchGrievanceAnalytics() {
+  const res = await api.get("/grievances/analytics");
+  return res.data as GrievanceAnalytics;
+}
+
 export async function fetchGrievanceCategories() {
   const res = await api.get("/grievances/categories");
   return res.data as GrievanceCategoryRecord[];
@@ -444,6 +707,134 @@ export async function updateGrievance(
 ) {
   const res = await api.put(`/grievances/${id}`, data);
   return res.data;
+}
+
+export interface GrievanceAssignmentOptions {
+  departments: Array<{ id: string; name: string; code?: string | null }>;
+  officers: Array<{
+    id: string;
+    name: string;
+    department_id: string;
+    role?: string | null;
+  }>;
+}
+
+export async function fetchGrievanceAssignmentOptions(id: string) {
+  const res = await api.get(`/grievances/${id}/assignment-options`);
+  return res.data as GrievanceAssignmentOptions;
+}
+
+export async function assignGrievance(
+  id: string,
+  data: {
+    assigned_to: string;
+    department_id: string;
+    due_date?: string;
+    instructions: string;
+  },
+) {
+  const res = await api.post(`/grievances/${id}/assign`, data);
+  return res.data as GrievanceRecord;
+}
+
+export async function escalateGrievance(
+  id: string,
+  data: { reason: string; description: string; escalated_to?: string },
+) {
+  const res = await api.post(`/grievances/${id}/escalate`, data);
+  return res.data as GrievanceRecord;
+}
+
+export async function respondToGrievanceAssignment(
+  grievanceId: string,
+  assignmentId: string,
+  data: { action: "accept" | "reject"; rejection_reason?: string },
+) {
+  const res = await api.post(
+    `/grievances/${grievanceId}/assignments/${assignmentId}/respond`,
+    data,
+  );
+  return res.data as GrievanceRecord;
+}
+
+export async function resolveGrievance(
+  id: string,
+  data: { resolution_summary: string; public_remarks?: string },
+) {
+  const res = await api.post(`/grievances/${id}/resolve`, data);
+  return res.data as GrievanceRecord;
+}
+
+export async function closeGrievance(
+  id: string,
+  data: { citizen_confirmed: boolean; override_reason?: string },
+) {
+  const res = await api.post(`/grievances/${id}/close`, data);
+  return res.data as GrievanceRecord;
+}
+
+export async function reopenGrievance(id: string, reason: string) {
+  const res = await api.post(`/grievances/${id}/reopen`, { reason });
+  return res.data as GrievanceRecord;
+}
+
+export async function addGrievanceNote(id: string, remarks: string) {
+  const res = await api.post(`/grievances/${id}/notes`, { remarks });
+  return res.data;
+}
+
+export interface CitizenGrievanceRecord extends GrievanceRecord {
+  feedback?: Array<{
+    id: string;
+    rating?: number | null;
+    comments?: string | null;
+    feedback_type: string;
+  }>;
+}
+
+export async function fetchMyGrievances() {
+  const res = await api.get("/citizen/grievances");
+  return res.data as { data: CitizenGrievanceRecord[] };
+}
+
+export async function submitCitizenGrievanceFeedback(
+  id: string,
+  data: {
+    rating: number;
+    comments: string;
+    would_recommend?: boolean;
+    reopen_requested?: boolean;
+    reopen_reason?: string;
+  },
+) {
+  const res = await api.post(`/citizen/grievances/${id}/feedback`, data);
+  return res.data;
+}
+
+export async function fetchCitizenGrievanceCategories() {
+  const res = await api.get("/citizen/grievance-categories");
+  return res.data as Array<{
+    id: string;
+    name: string;
+    description?: string | null;
+    sla_days: number;
+  }>;
+}
+
+export async function fileCitizenGrievance(data: {
+  category_id: string;
+  subject: string;
+  description: string;
+  priority: "low" | "medium" | "high";
+}) {
+  const res = await api.post("/citizen/grievances", data);
+  return res.data as {
+    id: string;
+    grievance_number: string;
+    status: string;
+    due_date: string;
+    message: string;
+  };
 }
 
 export interface GrievanceDepartmentRecord {
@@ -634,6 +1025,121 @@ export async function fetchProjectStats() {
   const res = await api.get("/projects/stats");
   return res.data;
 }
+export async function fetchProjectBudgetSummary() {
+  const res = await api.get("/projects/budget-summary");
+  return res.data as {
+    allocated: number;
+    utilized: number;
+    released: number;
+    expenditure: number;
+    balance: number;
+    release_balance: number;
+    budget_heads: number;
+    projects: number;
+  };
+}
+export async function fetchProjectAllocationHistory(
+  projectId: string,
+  params?: Record<string, string | number>,
+) {
+  const res = await api.get(`/projects/${projectId}/allocation-history`, {
+    params,
+  });
+  return res.data;
+}
+export async function downloadProjectBudgetExport() {
+  const res = await api.get("/projects/budget-export", {
+    responseType: "blob",
+  });
+  return res.data as Blob;
+}
+export async function downloadProjectFinancialExport() {
+  const res = await api.get("/projects/financial-export", {
+    responseType: "blob",
+  });
+  return res.data as Blob;
+}
+export async function fetchProjectLookup(
+  lookup: "category" | "type" | "department" | "agency",
+  extra?: Record<string, string | number>,
+) {
+  const res = await api.get(`/project-lookups/${lookup}`, {
+    params: { per_page: 100, is_active: 1, ...extra },
+  });
+  return res.data as {
+    data: Array<{
+      id: string;
+      name: string;
+      code: string;
+      deleted_at?: string | null;
+    }>;
+    meta: PaginationMeta;
+  };
+}
+export async function saveProjectLookup(
+  lookup: "category" | "type" | "department" | "agency",
+  data: Record<string, unknown>,
+  id?: string,
+) {
+  const res = id
+    ? await api.put(`/project-lookups/${lookup}/${id}`, data)
+    : await api.post(`/project-lookups/${lookup}`, data);
+  return res.data;
+}
+export async function deleteProjectLookup(lookup: string, id: string) {
+  const res = await api.delete(`/project-lookups/${lookup}/${id}`);
+  return res.data;
+}
+export async function restoreProjectLookup(lookup: string, id: string) {
+  const res = await api.post(`/project-lookups/${lookup}/${id}/restore`);
+  return res.data;
+}
+
+export interface ProjectWorkflowEntryRecord {
+  id: string;
+  project_id: string;
+  entry_type: string;
+  title: string;
+  reference_number?: string | null;
+  status: string;
+  department?: string | null;
+  agency?: string | null;
+  contractor?: string | null;
+  amount?: string | number | null;
+  entry_date?: string | null;
+  due_date?: string | null;
+  physical_progress?: string | number | null;
+  financial_progress?: string | number | null;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  notes?: string | null;
+  details?: Record<string, unknown> | null;
+  created_at?: string;
+}
+export async function fetchProjectWorkflow(
+  projectId: string,
+  params?: Record<string, string | number>,
+) {
+  const res = await api.get(`/projects/${projectId}/workflow`, { params });
+  return res.data as {
+    data: ProjectWorkflowEntryRecord[];
+    meta: PaginationMeta;
+  };
+}
+export async function saveProjectWorkflow(
+  projectId: string,
+  data: Record<string, unknown>,
+  id?: string,
+) {
+  const res = id
+    ? await api.put(`/projects/${projectId}/workflow/${id}`, data)
+    : await api.post(`/projects/${projectId}/workflow`, data);
+  return res.data as ProjectWorkflowEntryRecord;
+}
+export async function deleteProjectWorkflow(projectId: string, id: string) {
+  const res = await api.delete(`/projects/${projectId}/workflow/${id}`);
+  return res.data as { message: string };
+}
 
 // ── Volunteers ────────────────────────────────────────────────────────────────
 export interface VolunteerRecord {
@@ -726,6 +1232,121 @@ export async function fetchVolunteer(id: string) {
 export async function fetchVolunteerStats() {
   const res = await api.get("/volunteers/stats");
   return res.data;
+}
+
+export interface VolunteerVisitRecord {
+  id: string;
+  volunteer_id: string;
+  citizen_id?: string | null;
+  family_id?: string | null;
+  village_id: string;
+  ward_id?: string | null;
+  visit_type: string;
+  status: string;
+  scheduled_at?: string | null;
+  checked_in_at?: string | null;
+  checked_out_at?: string | null;
+  check_in_latitude?: string | null;
+  check_in_longitude?: string | null;
+  check_out_latitude?: string | null;
+  check_out_longitude?: string | null;
+  notes?: string | null;
+  outcome?: string | null;
+  follow_up_required: boolean;
+  follow_up_date?: string | null;
+  follow_up_notes?: string | null;
+  attachments: Array<{ index: number; download_url: string }>;
+  volunteer?: Pick<
+    VolunteerRecord,
+    "id" | "volunteer_id" | "first_name" | "last_name"
+  >;
+  citizen?: {
+    id: string;
+    unique_id: string;
+    first_name: string;
+    last_name: string;
+  } | null;
+  family?: {
+    id: string;
+    family_id: string;
+    head_of_family_name: string;
+  } | null;
+  village?: { id: string; name: string } | null;
+  ward?: { id: string; name: string } | null;
+  activity_logs?: Array<{
+    id: string;
+    action: string;
+    description: string;
+    created_at: string;
+  }>;
+}
+export async function fetchVolunteerVisitStats() {
+  const res = await api.get("/volunteer-visits/stats");
+  return res.data as Record<string, number>;
+}
+export async function fetchVolunteerVisits(
+  params?: Record<string, string | number>,
+) {
+  const res = await api.get("/volunteer-visits", { params });
+  return res.data as { data: VolunteerVisitRecord[]; meta: PaginationMeta };
+}
+export async function fetchVolunteerVisit(id: string) {
+  const res = await api.get(`/volunteer-visits/${id}`);
+  return res.data as VolunteerVisitRecord;
+}
+export async function createVolunteerVisit(data: Record<string, unknown>) {
+  const res = await api.post("/volunteer-visits", data);
+  return res.data as VolunteerVisitRecord;
+}
+export async function updateVolunteerVisit(
+  id: string,
+  data: Record<string, unknown>,
+) {
+  const res = await api.put(`/volunteer-visits/${id}`, data);
+  return res.data as VolunteerVisitRecord;
+}
+export async function checkInVolunteerVisit(
+  id: string,
+  data: { latitude: number; longitude: number },
+) {
+  const res = await api.post(`/volunteer-visits/${id}/check-in`, data);
+  return res.data as VolunteerVisitRecord;
+}
+export async function completeVolunteerVisit(id: string, data: FormData) {
+  const res = await api.post(`/volunteer-visits/${id}/complete`, data, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data as VolunteerVisitRecord;
+}
+export async function deleteVolunteerVisitAttachment(
+  id: string,
+  index: number,
+) {
+  await api.delete(`/volunteer-visits/${id}/attachments/${index}`);
+}
+export async function downloadVolunteerVisitAttachment(
+  id: string,
+  index: number,
+) {
+  const res = await api.get(`/volunteer-visits/${id}/attachments/${index}`, {
+    responseType: "blob",
+  });
+  const url = URL.createObjectURL(res.data as Blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `visit-${id}-attachment-${index}`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+export async function previewVolunteerVisitAttachment(
+  id: string,
+  index: number,
+) {
+  const res = await api.get(`/volunteer-visits/${id}/attachments/${index}`, {
+    responseType: "blob",
+  });
+  const url = URL.createObjectURL(res.data as Blob);
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export async function fetchVolunteerActivities(
@@ -895,14 +1516,21 @@ export interface SchemeRecord {
   department_id: string | null;
   department?: { id: string; name: string } | null;
   description: string | null;
+  objectives?: string | null;
   eligibility: string | null;
   benefits: string | null;
+  documents_required?: string | null;
   max_amount: string | null;
+  funding_source?: string | null;
   start_date: string;
   end_date: string | null;
   is_active: boolean;
   application_mode: "online" | "offline" | "both";
   sla_days: number;
+  approval_authority?: string | null;
+  website_url?: string | null;
+  helpline_number?: string | null;
+  remarks?: string | null;
   applications_count?: number;
   beneficiaries_count?: number;
   eligibility_rules?: Array<{
@@ -916,6 +1544,37 @@ export interface SchemeRecord {
     is_mandatory: boolean;
     error_message: string | null;
   }>;
+  required_documents?: SchemeRequiredDocumentRecord[];
+}
+
+export interface SchemeRequiredDocumentRecord {
+  id: string;
+  scheme_id: string;
+  document_category_id: string;
+  name: string;
+  description?: string | null;
+  is_mandatory: boolean;
+  max_age_days?: number | null;
+  sort_order: number;
+  is_active: boolean;
+  document_category?: { id: string; name: string; slug?: string };
+}
+
+export interface SchemeDocumentReviewRecord {
+  id: string;
+  status: "pending" | "verified" | "rejected";
+  rejection_reason?: string | null;
+  reviewed_at?: string | null;
+  requirement: SchemeRequiredDocumentRecord;
+  document: {
+    id: string;
+    title: string;
+    file_name: string;
+    document_date?: string | null;
+    is_verified: boolean;
+    document_category?: { id: string; name: string };
+  };
+  reviewed_by?: { id: string; name: string } | null;
 }
 
 export interface SchemeStats {
@@ -976,10 +1635,18 @@ export interface SchemeApplicationRecord {
   beneficiaries?: SchemeBeneficiaryRecord[];
   benefit_disbursements?: Array<{
     id: string;
+    disbursement_number: string;
     amount: string;
     disbursement_date: string;
     status: string;
     transaction_id: string | null;
+    reference_number?: string | null;
+    payment_mode: string;
+    failure_reason?: string | null;
+    retry_date?: string | null;
+    retry_count?: number;
+    account_number_masked?: string | null;
+    ifsc_masked?: string | null;
   }>;
   documents?: Array<{
     id: string;
@@ -995,6 +1662,7 @@ export interface SchemeApplicationRecord {
     created_at: string;
     user?: { id: string; name: string } | null;
   }>;
+  document_reviews?: SchemeDocumentReviewRecord[];
 }
 
 export interface SchemeBeneficiaryRecord {
@@ -1019,6 +1687,47 @@ export async function fetchScheme(id: string) {
   return res.data as SchemeRecord;
 }
 
+export type SchemeInput = {
+  name: string;
+  code: string;
+  category: string;
+  department_id?: string;
+  description?: string;
+  objectives?: string;
+  eligibility?: string;
+  benefits?: string;
+  max_amount?: number;
+  funding_source?: string;
+  start_date: string;
+  end_date?: string;
+  is_active: boolean;
+  application_mode: "online" | "offline" | "both";
+  approval_authority?: string;
+  sla_days: number;
+  website_url?: string;
+  helpline_number?: string;
+  remarks?: string;
+};
+
+export async function createScheme(data: SchemeInput) {
+  const res = await api.post("/schemes", data);
+  return res.data as SchemeRecord;
+}
+
+export async function updateScheme(id: string, data: Partial<SchemeInput>) {
+  const res = await api.put(`/schemes/${id}`, data);
+  return res.data as SchemeRecord;
+}
+
+export async function deleteScheme(id: string) {
+  await api.delete(`/schemes/${id}`);
+}
+
+export async function fetchDepartments() {
+  const res = await api.get("/departments");
+  return res.data as Array<{ id: string; name: string; code?: string }>;
+}
+
 export async function fetchSchemeStats() {
   const res = await api.get("/schemes/stats");
   return res.data as SchemeStats;
@@ -1034,6 +1743,112 @@ export async function fetchSchemeEligibilityRules() {
   return res.data as { data: SchemeRecord[] };
 }
 
+export type SchemeEligibilityRuleInput = {
+  rule_name: string;
+  field_name:
+    | "age"
+    | "gender"
+    | "disability_status"
+    | "occupation"
+    | "marital_status";
+  operator:
+    | "equals"
+    | "not_equals"
+    | "greater_than_or_equal"
+    | "less_than_or_equal"
+    | "in";
+  value: string;
+  is_mandatory: boolean;
+  sort_order: number;
+  error_message: string;
+};
+
+export async function createSchemeEligibilityRule(
+  schemeId: string,
+  data: SchemeEligibilityRuleInput,
+) {
+  const res = await api.post(`/schemes/${schemeId}/eligibility-rules`, data);
+  return res.data;
+}
+
+export async function updateSchemeEligibilityRule(
+  schemeId: string,
+  ruleId: string,
+  data: SchemeEligibilityRuleInput,
+) {
+  const res = await api.put(
+    `/schemes/${schemeId}/eligibility-rules/${ruleId}`,
+    data,
+  );
+  return res.data;
+}
+
+export async function deleteSchemeEligibilityRule(
+  schemeId: string,
+  ruleId: string,
+) {
+  await api.delete(`/schemes/${schemeId}/eligibility-rules/${ruleId}`);
+}
+
+export type SchemeRequiredDocumentInput = {
+  document_category_id: string;
+  name: string;
+  description?: string;
+  is_mandatory: boolean;
+  max_age_days?: number;
+  sort_order: number;
+  is_active: boolean;
+};
+
+export async function createSchemeRequiredDocument(
+  schemeId: string,
+  data: SchemeRequiredDocumentInput,
+) {
+  const res = await api.post(`/schemes/${schemeId}/required-documents`, data);
+  return res.data;
+}
+
+export async function updateSchemeRequiredDocument(
+  schemeId: string,
+  requirementId: string,
+  data: SchemeRequiredDocumentInput,
+) {
+  const res = await api.put(
+    `/schemes/${schemeId}/required-documents/${requirementId}`,
+    data,
+  );
+  return res.data;
+}
+
+export async function deleteSchemeRequiredDocument(
+  schemeId: string,
+  requirementId: string,
+) {
+  await api.delete(`/schemes/${schemeId}/required-documents/${requirementId}`);
+}
+
+export async function uploadSchemeApplicationDocument(
+  applicationId: string,
+  data: FormData,
+) {
+  const res = await api.post(
+    `/citizen/scheme-applications/${applicationId}/documents`,
+    data,
+  );
+  return res.data as SchemeDocumentReviewRecord;
+}
+
+export async function reviewSchemeApplicationDocument(
+  reviewId: string,
+  data: { action: "verify" | "reject"; rejection_reason?: string },
+) {
+  const res = await api.post(
+    `/schemes/application-document-reviews/${reviewId}`,
+    data,
+  );
+  return res.data as SchemeDocumentReviewRecord;
+}
+
 export async function fetchSchemeApplications(
   params?: Record<string, string | number>,
 ) {
@@ -1044,6 +1859,82 @@ export async function fetchSchemeApplications(
 export async function fetchSchemeApplication(id: string) {
   const res = await api.get(`/schemes/applications/${id}`);
   return res.data as SchemeApplicationRecord;
+}
+
+export async function fetchCitizenSchemes() {
+  const res = await api.get("/citizen/schemes");
+  return res.data as { data: SchemeRecord[] };
+}
+
+export async function fetchMySchemeApplications() {
+  const res = await api.get("/citizen/scheme-applications");
+  return res.data as { data: SchemeApplicationRecord[] };
+}
+
+export async function withdrawSchemeApplication(id: string, reason: string) {
+  const res = await api.post(`/citizen/scheme-applications/${id}/withdraw`, {
+    reason,
+  });
+  return res.data as SchemeApplicationRecord;
+}
+
+export async function submitCitizenSchemeApplication(data: {
+  scheme_id: string;
+  remarks?: string;
+}) {
+  const res = await api.post("/citizen/scheme-applications", data);
+  return res.data as SchemeApplicationRecord;
+}
+
+export async function reviewSchemeApplication(
+  id: string,
+  data: {
+    action: "start_review" | "approve" | "reject";
+    remarks?: string;
+    rejection_reason?: string;
+    sanctioned_amount?: number;
+    sanction_order_number?: string;
+  },
+) {
+  const res = await api.post(`/schemes/applications/${id}/review`, data);
+  return res.data as SchemeApplicationRecord;
+}
+
+export async function createBenefitDisbursement(
+  applicationId: string,
+  data: {
+    amount: number;
+    payment_mode: "bank_transfer" | "cheque" | "cash" | "in_kind";
+    disbursement_date: string;
+    bank_name?: string;
+    account_number?: string;
+    ifsc_code?: string;
+    reference_number?: string;
+    remarks?: string;
+  },
+) {
+  const res = await api.post(
+    `/schemes/applications/${applicationId}/disbursements`,
+    data,
+  );
+  return res.data;
+}
+
+export async function transitionBenefitDisbursement(
+  disbursementId: string,
+  data: {
+    action: "complete" | "fail" | "retry";
+    transaction_id?: string;
+    failure_reason?: string;
+    retry_date?: string;
+    remarks?: string;
+  },
+) {
+  const res = await api.post(
+    `/schemes/disbursements/${disbursementId}/transition`,
+    data,
+  );
+  return res.data;
 }
 
 export async function fetchSchemeBeneficiaries(
@@ -1068,6 +1959,17 @@ export interface SurveyRecord {
   target_responses?: number | null;
   response_count?: number;
   total_responses?: number;
+  lifecycle?: Array<{
+    id: string;
+    action: "created" | "updated" | "published" | "assigned" | "closed";
+    description?: string | null;
+    occurred_at?: string | null;
+    actor?: {
+      id: string;
+      name: string;
+      role?: string | null;
+    } | null;
+  }>;
   questions?: Array<{
     id: string;
     question_type: string;
@@ -1268,6 +2170,20 @@ export interface FamilyRecord {
   family_id: string;
   head_of_family_name: string;
   members_count: number;
+  voters_count: number;
+  village_id: string;
+  ward_id?: string | null;
+  house_number?: string | null;
+  street?: string | null;
+  locality?: string | null;
+  ration_card_number?: string | null;
+  ration_card_type?: string | null;
+  annual_income?: string | null;
+  economic_status: string;
+  caste?: string | null;
+  religion?: string | null;
+  is_bpl: boolean;
+  remarks?: string | null;
   total_benefits_received: string | null;
   village?: {
     id: string;
@@ -1288,11 +2204,49 @@ export interface FamilyRecord {
       gender: string;
     };
   }>;
+  activity_logs?: Array<{
+    id: string;
+    action: string;
+    description: string;
+    created_at: string;
+    user?: { id: string; name: string } | null;
+  }>;
 }
 
 export async function createFamily(data: Record<string, unknown>) {
   const res = await api.post("/families", data);
-  return res.data;
+  return res.data as FamilyRecord;
+}
+
+export async function updateFamily(id: string, data: Record<string, unknown>) {
+  const res = await api.put(`/families/${id}`, data);
+  return res.data as FamilyRecord;
+}
+
+export async function deleteFamily(id: string) {
+  await api.delete(`/families/${id}`);
+}
+
+export async function addFamilyMember(
+  id: string,
+  data: Record<string, unknown>,
+) {
+  const res = await api.post(`/families/${id}/members`, data);
+  return res.data as FamilyRecord;
+}
+
+export async function removeFamilyMember(id: string, memberId: string) {
+  const res = await api.delete(`/families/${id}/members/${memberId}`);
+  return res.data as FamilyRecord;
+}
+
+export async function updateFamilyMember(
+  id: string,
+  memberId: string,
+  data: Record<string, unknown>,
+) {
+  const res = await api.put(`/families/${id}/members/${memberId}`, data);
+  return res.data as FamilyRecord;
 }
 
 // ── Documents ────────────────────────────────────────────────────────────────
@@ -1347,6 +2301,50 @@ export interface DocumentRecord {
 export async function deleteDocument(id: string) {
   const res = await api.delete(`/documents/${id}`);
   return res.data;
+}
+
+export interface DocumentVersionRecord {
+  id: string;
+  version_number: number;
+  file_name: string;
+  file_size?: number | null;
+  file_type?: string | null;
+  mime_type?: string | null;
+  change_notes?: string | null;
+  is_current: boolean;
+  created_at: string;
+  uploaded_by?: { id: string; name: string } | null;
+}
+
+export async function fetchDocumentVersions(documentId: string) {
+  const res = await api.get(`/documents/${documentId}/versions`);
+  return res.data as { data: DocumentVersionRecord[] };
+}
+
+export async function uploadDocumentVersion(
+  documentId: string,
+  formData: FormData,
+) {
+  const res = await api.post(`/documents/${documentId}/versions`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data as DocumentVersionRecord;
+}
+
+export async function downloadDocumentVersion(
+  documentId: string,
+  version: DocumentVersionRecord,
+) {
+  const res = await api.get(
+    `/documents/${documentId}/versions/${version.id}/download`,
+    { responseType: "blob" },
+  );
+  const url = URL.createObjectURL(res.data as Blob);
+  const link = window.document.createElement("a");
+  link.href = url;
+  link.download = version.file_name;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export interface CommunicationCampaignRecord {

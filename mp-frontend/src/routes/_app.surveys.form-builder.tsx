@@ -354,6 +354,7 @@ function FormBuilder() {
                   onValueChange={(v) =>
                     updateQuestion(index, {
                       question_type: v,
+                      validation_rule: "",
                       options:
                         choice(v) && question.options.length < 2
                           ? ["Option 1", "Option 2"]
@@ -406,6 +407,32 @@ function FormBuilder() {
                 }
               />
             </Field>
+            {validationOptions(question.question_type).length > 0 && (
+              <Field label="Answer validation">
+                <Select
+                  value={question.validation_rule || "none"}
+                  onValueChange={(value) =>
+                    updateQuestion(index, {
+                      validation_rule: value === "none" ? "" : value,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      No additional validation
+                    </SelectItem>
+                    {validationOptions(question.question_type).map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={question.is_required}
@@ -423,6 +450,26 @@ function FormBuilder() {
 }
 function choice(type: string) {
   return ["dropdown", "radio", "checkbox"].includes(type);
+}
+function validationOptions(type: string) {
+  if (["short_text", "long_text"].includes(type))
+    return [
+      { value: "min_length:2|max_length:100", label: "2–100 characters" },
+      { value: "min_length:10|max_length:500", label: "10–500 characters" },
+      { value: "max_length:2000", label: "Maximum 2,000 characters" },
+    ];
+  if (type === "number")
+    return [
+      { value: "min:0", label: "Zero or greater" },
+      { value: "min:1|max:100", label: "Between 1 and 100" },
+      { value: "min:0|max:10000000", label: "Between 0 and 10,000,000" },
+    ];
+  if (type === "checkbox")
+    return [
+      { value: "min_selections:1", label: "Select at least one" },
+      { value: "min_selections:1|max_selections:3", label: "Select 1–3" },
+    ];
+  return [];
 }
 function Field({
   label,

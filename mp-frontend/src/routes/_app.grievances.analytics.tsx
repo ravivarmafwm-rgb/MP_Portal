@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { BarChart3, TrendingUp, MapPin, Building2 } from "lucide-react";
+import { BarChart3, TrendingUp, Building2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchGrievanceStats, fetchGrievanceCategories } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import {
+  fetchGrievanceAnalytics,
+  fetchGrievanceStats,
+  fetchGrievanceCategories,
+} from "@/lib/api";
 import {
   BarChart,
   Bar,
@@ -27,16 +29,6 @@ export const Route = createFileRoute("/_app/grievances/analytics")({
   component: AnalyticsPage,
 });
 
-// Build weekly trend from stats (last 8 weeks labels)
-function buildWeeklyTrend(total: number, resolved: number) {
-  const weeks = ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"];
-  return weeks.map((w, i) => ({
-    week: w,
-    submitted: Math.max(1, Math.round((total / 8) * (0.8 + (i % 3) * 0.15))),
-    resolved: Math.max(0, Math.round((resolved / 8) * (0.7 + (i % 4) * 0.1))),
-  }));
-}
-
 function AnalyticsPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["grievance-stats-analytics"],
@@ -48,43 +40,17 @@ function AnalyticsPage() {
     queryFn: fetchGrievanceCategories,
     staleTime: 60_000,
   });
+  const { data: analytics, isLoading: analyticsLoading } = useQuery({
+    queryKey: ["grievance-analytics"],
+    queryFn: fetchGrievanceAnalytics,
+    staleTime: 30_000,
+  });
 
   const categories = cats ?? [];
   const total = stats?.total ?? 0;
-  const resolved = stats?.resolved ?? 0;
-  const weeklyTrend = buildWeeklyTrend(total, resolved);
-
-  const maxCat = Math.max(
-    ...categories.map((c: Record<string, unknown>) =>
-      Number(c.grievances_count ?? 0),
-    ),
-    1,
-  );
-
-  // Build assembly stats from available data
-  const assemblyStats = [
-    { assembly: "Madhapur", complaints: Math.round(total * 0.28), rate: 74 },
-    {
-      assembly: "Serilingampally",
-      complaints: Math.round(total * 0.24),
-      rate: 68,
-    },
-    { assembly: "Kukatpally", complaints: Math.round(total * 0.22), rate: 72 },
-    {
-      assembly: "Rajendranagar",
-      complaints: Math.round(total * 0.26),
-      rate: 65,
-    },
-  ];
-
-  // Department performance from grievance stats
-  const deptStats = [
-    { name: "Roads & Buildings", slaCompliance: 88 },
-    { name: "Water Board", slaCompliance: 76 },
-    { name: "Revenue", slaCompliance: 82 },
-    { name: "Health", slaCompliance: 91 },
-    { name: "Education", slaCompliance: 78 },
-  ];
+  const weeklyTrend = analytics?.weekly_trend ?? [];
+  const assemblyStats = analytics?.assembly ?? [];
+  const deptStats = analytics?.departments ?? [];
 
   return (
     <>
@@ -178,7 +144,7 @@ function AnalyticsPage() {
                 <TrendingUp className="h-3 w-3" /> Improving
               </Badge>
             </div>
-            {statsLoading ? (
+            {statsLoading || analyticsLoading ? (
               <Skeleton className="h-48" />
             ) : (
               <ResponsiveContainer width="100%" height={200}>
@@ -218,29 +184,37 @@ function AnalyticsPage() {
             </h3>
             <p className="text-xs text-muted-foreground">Constituency rollup</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              {assemblyStats.map((a, i) => (
-                <motion.div
-                  key={a.assembly}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.06 }}
-                >
-                  <Card className="bg-muted/30 p-4">
-                    <div className="text-xs font-medium text-muted-foreground">
-                      {a.assembly}
-                    </div>
-                    <div className="mt-1 font-display text-2xl font-bold tabular-nums">
-                      {a.complaints.toLocaleString()}
-                    </div>
-                    <Badge
-                      variant="secondary"
-                      className="mt-2 bg-success/10 text-success"
-                    >
-                      {a.rate}% resolved
-                    </Badge>
-                  </Card>
-                </motion.div>
-              ))}
+              {assemblyStats.length === 0 ? (
+                <p className="col-span-2 py-8 text-center text-sm text-muted-foreground">
+                  No assembly grievance data is available for your scope.
+                </p>
+              ) : (
+                assemblyStats.map((a, i) => (
+                  <motion.div
+                    key={a.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.06 }}
+                  >
+                    <Card className="bg-muted/30 p-4">
+                      <div className="text-xs font-medium text-muted-foreground">
+                        {a.name}
+                      </div>
+                      <div className="mt-1 font-display text-2xl font-bold tabular-nums">
+                        {a.complaints.toLocaleString()}
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className="mt-2 bg-success/10 text-success"
+                      >
+                        {a.resolution_rate == null
+                          ? "No resolved records"
+                          : `${a.resolution_rate}% resolved`}
+                      </Badge>
+                    </Card>
+                  </motion.div>
+                ))
+              )}
             </div>
           </Card>
         </div>
@@ -254,9 +228,14 @@ function AnalyticsPage() {
             SLA compliance ranking
           </p>
           <div className="mt-4 space-y-3">
-            {[...deptStats]
-              .sort((a, b) => b.slaCompliance - a.slaCompliance)
-              .map((d, i) => (
+            {analyticsLoading ? (
+              <Skeleton className="h-32" />
+            ) : deptStats.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No department assignment data is available.
+              </p>
+            ) : (
+              deptStats.map((d, i) => (
                 <div
                   key={d.name}
                   className="grid grid-cols-12 items-center gap-3 text-xs"
@@ -269,22 +248,30 @@ function AnalyticsPage() {
                     {d.name}
                   </div>
                   <div className="col-span-5">
-                    <Progress value={d.slaCompliance} className="h-2" />
+                    <div className="h-2 rounded-full bg-muted">
+                      <div
+                        className="h-2 rounded-full bg-primary"
+                        style={{
+                          width: `${Math.min(d.sla_compliance ?? 0, 100)}%`,
+                        }}
+                      />
+                    </div>
                   </div>
                   <div
                     className={cn(
                       "col-span-2 text-right font-semibold tabular-nums",
-                      d.slaCompliance >= 85
+                      (d.sla_compliance ?? 0) >= 85
                         ? "text-success"
-                        : d.slaCompliance >= 70
+                        : (d.sla_compliance ?? 0) >= 70
                           ? "text-warning"
                           : "text-destructive",
                     )}
                   >
-                    {d.slaCompliance}%
+                    {d.sla_compliance == null ? "N/A" : `${d.sla_compliance}%`}
                   </div>
                 </div>
-              ))}
+              ))
+            )}
           </div>
         </Card>
       </div>

@@ -81,25 +81,25 @@ function EscalationsPage() {
   const buckets = [
     {
       l: "Critical Cases",
-      v: Math.round(escalatedCount * 0.3),
+      v: stats?.urgent ?? 0,
       icon: AlertOctagon,
       tone: "bg-destructive/10 text-destructive",
     },
     {
       l: "High Priority",
-      v: stats?.pending ?? 0,
+      v: escalatedCount,
       icon: AlertTriangle,
       tone: "bg-warning/15 text-warning",
     },
     {
       l: "Overdue",
-      v: Math.round((stats?.total ?? 0) * 0.1),
+      v: stats?.overdue ?? 0,
       icon: Clock,
       tone: "bg-info/10 text-info",
     },
     {
       l: "Unassigned",
-      v: stats?.pending ?? 0,
+      v: stats?.unassigned ?? 0,
       icon: UserX,
       tone: "bg-muted text-muted-foreground",
     },
@@ -170,14 +170,6 @@ function EscalationsPage() {
                     >
                       L{l.level}
                     </Badge>
-                    <span className="font-display text-2xl font-bold tabular-nums">
-                      {l.level === 4
-                        ? escalatedCount
-                        : Math.max(
-                            0,
-                            Math.round(escalatedCount * (0.5 - l.level * 0.08)),
-                          )}
-                    </span>
                   </div>
                   <h4 className="mt-3 font-display text-sm font-bold text-foreground">
                     {l.role}

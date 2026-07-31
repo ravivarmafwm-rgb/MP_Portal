@@ -10,6 +10,7 @@ import {
   Home,
   Loader2,
   Search,
+  AlertCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -27,8 +28,17 @@ import {
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchCitizens, fetchCitizenStats } from "@/lib/api";
+import {
+  downloadCitizenDirectory,
+  fetchCitizens,
+  fetchCitizenStats,
+  getApiErrorMessage,
+} from "@/lib/api";
+import { toast } from "sonner";
 import { StatCard } from "@/components/layout/StatCard";
+import { useAuth } from "@/lib/auth";
+import { CitizenImportDialog } from "@/components/citizens/CitizenImportDialog";
+import { BulkCitizenActions } from "@/components/citizens/BulkCitizenActions";
 
 export const Route = createFileRoute("/_app/citizens/list")({
   head: () => ({
@@ -40,27 +50,56 @@ export const Route = createFileRoute("/_app/citizens/list")({
 function CitizenListPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [gender, setGender] = useState("");
+  const [voter, setVoter] = useState("");
+  const [ageGroup, setAgeGroup] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const { user } = useAuth();
+  const canExport = [
+    "super-admin",
+    "mp",
+    "mp-staff",
+    "constituency-coordinator",
+    "assembly-coordinator",
+  ].includes(user?.role_slug ?? "");
+  const canImport = [
+    "super-admin",
+    "mp-staff",
+    "constituency-coordinator",
+    "assembly-coordinator",
+  ].includes(user?.role_slug ?? "");
 
-  const { data: statsData } = useQuery({
+  const statsQuery = useQuery({
     queryKey: ["citizen-stats"],
     queryFn: fetchCitizenStats,
     staleTime: 60_000,
   });
-  const { data, isLoading } = useQuery({
-    queryKey: ["citizens", search, page],
-    queryFn: () => fetchCitizens({ search, page, per_page: 20 }),
+  const directoryQuery = useQuery({
+    queryKey: ["citizens", search, gender, voter, ageGroup, page],
+    queryFn: () =>
+      fetchCitizens({
+        search,
+        ...(gender ? { gender } : {}),
+        ...(voter ? { is_voter: voter } : {}),
+        ...(ageGroup ? { age_group: ageGroup } : {}),
+        page,
+        per_page: 20,
+      }),
     staleTime: 30_000,
   });
 
+  const statsData = statsQuery.data;
+  const data = directoryQuery.data;
   const citizens = data?.data ?? [];
   const meta = data?.meta ?? { total: 0, current_page: 1, last_page: 1 };
+  const selectable = canExport || user?.role_slug === "super-admin";
 
   const stats = [
     {
       label: "Total Citizens",
       value: (statsData?.total ?? 0).toLocaleString("en-IN"),
       icon: Users,
-      delta: "+2.4%",
+      delta: "",
       trend: "up" as const,
     },
     {
@@ -81,7 +120,7 @@ function CitizenListPage() {
       label: "New This Month",
       value: (statsData?.this_month ?? 0).toLocaleString("en-IN"),
       icon: UserPlus,
-      delta: "+12%",
+      delta: "",
       trend: "up" as const,
       hint: "This month",
     },
@@ -94,9 +133,24 @@ function CitizenListPage() {
         description="Single source of truth for every citizen across the constituency."
         actions={
           <>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Download className="h-4 w-4" /> Export
-            </Button>
+            {canExport && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() =>
+                  downloadCitizenDirectory({
+                    ...(search ? { search } : {}),
+                    ...(gender ? { gender } : {}),
+                    ...(voter ? { is_voter: voter } : {}),
+                    ...(ageGroup ? { age_group: ageGroup } : {}),
+                  }).catch((error) => toast.error(getApiErrorMessage(error)))
+                }
+              >
+                <Download className="h-4 w-4" /> Export
+              </Button>
+            )}
+            {canImport && <CitizenImportDialog />}
             <Button asChild size="sm" className="gap-1.5">
               <Link to="/citizens/create-profile">
                 <Plus className="h-4 w-4" /> Add Citizen
@@ -111,13 +165,32 @@ function CitizenListPage() {
         transition={{ duration: 0.3 }}
         className="space-y-6 p-4 md:p-8"
       >
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {stats.map((s, i) => (
-            <StatCard key={s.label} {...s} index={i} />
-          ))}
-        </div>
+        {statsQuery.isLoading && (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-32" />
+            ))}
+          </div>
+        )}
+        {statsQuery.isError && (
+          <div className="rounded-md border border-destructive/30 p-4 text-sm text-destructive">
+            Citizen statistics could not be loaded.
+          </div>
+        )}
+        {statsQuery.data && (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {stats.map((s, i) => (
+              <StatCard key={s.label} {...s} index={i} />
+            ))}
+          </div>
+        )}
 
         <Card className="overflow-hidden">
+          {selected.length > 0 && selectable && (
+            <div className="border-b p-3">
+              <BulkCitizenActions ids={selected} />
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-muted/30 p-3">
             <div className="relative min-w-[240px] flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -131,19 +204,63 @@ function CitizenListPage() {
                 }}
               />
             </div>
+            <select
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+              value={gender}
+              onChange={(event) => {
+                setGender(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All genders</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+            <select
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+              value={voter}
+              onChange={(event) => {
+                setVoter(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All voter statuses</option>
+              <option value="1">Voters</option>
+              <option value="0">Non-voters</option>
+            </select>
+            <select
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+              value={ageGroup}
+              onChange={(event) => {
+                setAgeGroup(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All ages</option>
+              <option value="child">Under 18</option>
+              <option value="adult">18–59</option>
+              <option value="senior">60+</option>
+            </select>
           </div>
 
-          {isLoading ? (
+          {directoryQuery.isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 10 }).map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
+            </div>
+          ) : directoryQuery.isError ? (
+            <div className="py-16 text-center text-destructive">
+              <AlertCircle className="mx-auto mb-3 h-8 w-8" />
+              Citizen records could not be loaded. Please retry.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {selectable && <TableHead className="w-10" />}
                     <TableHead>Citizen ID</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Mobile</TableHead>
@@ -163,6 +280,24 @@ function CitizenListPage() {
                       transition={{ delay: i * 0.01 }}
                       className="border-b hover:bg-muted/40"
                     >
+                      {selectable && (
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(String(c.id))}
+                            onChange={(event) =>
+                              setSelected((current) =>
+                                event.target.checked
+                                  ? [...new Set([...current, String(c.id)])]
+                                  : current.filter((id) => id !== String(c.id)),
+                              )
+                            }
+                            aria-label={
+                              "Select " + String(c.unique_id ?? "citizen")
+                            }
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="font-mono text-xs">
                         {String(c.unique_id ?? "")}
                       </TableCell>
@@ -175,10 +310,14 @@ function CitizenListPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="text-sm font-medium">
+                            <Link
+                              to="/citizens/profile"
+                              search={{ id: String(c.id) }}
+                              className="text-sm font-medium text-primary hover:underline"
+                            >
                               {String(c.first_name ?? "")}{" "}
                               {String(c.last_name ?? "")}
-                            </div>
+                            </Link>
                             <div className="text-xs text-muted-foreground">
                               {String(c.email ?? "—")}
                             </div>
@@ -217,7 +356,7 @@ function CitizenListPage() {
                   {citizens.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={selectable ? 9 : 8}
                         className="py-12 text-center text-sm text-muted-foreground"
                       >
                         {search

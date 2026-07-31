@@ -14,6 +14,9 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchSchemeApplication } from "@/lib/api";
+import { SchemeApplicationReviewActions } from "@/components/schemes/SchemeApplicationReviewActions";
+import { BenefitDisbursementActions } from "@/components/schemes/BenefitDisbursementActions";
+import { SchemeDocumentReviewPanel } from "@/components/schemes/SchemeDocumentReviewPanel";
 
 export const Route = createFileRoute("/_app/schemes/application-detail")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -50,9 +53,12 @@ function ApplicationDetail() {
         title={`Application ${application.application_number}`}
         description={`${application.scheme?.name ?? "Scheme unavailable"} · ${application.applicant_name}`}
         actions={
-          <Button asChild variant="outline">
-            <Link to="/schemes/applications">Back to applications</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <SchemeApplicationReviewActions application={application} />
+            <Button asChild variant="outline">
+              <Link to="/schemes/applications">Back to applications</Link>
+            </Button>
+          </div>
         }
       />
       <div className="space-y-5 p-4 md:p-8">
@@ -132,49 +138,12 @@ function ApplicationDetail() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="documents">
-            <Card className="divide-y">
-              {application.documents?.map((document) => (
-                <div
-                  key={document.id}
-                  className="flex justify-between gap-3 p-4"
-                >
-                  <div>
-                    <div className="font-medium">{document.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {document.original_name}
-                    </div>
-                  </div>
-                  <Badge variant="secondary">{document.mime_type}</Badge>
-                </div>
-              ))}
-              {!application.documents?.length && (
-                <Empty text="No documents are attached to this application." />
-              )}
-            </Card>
+            <SchemeDocumentReviewPanel application={application} />
           </TabsContent>
           <TabsContent value="benefits">
-            <Card className="divide-y">
-              {application.benefit_disbursements?.map((payment) => (
-                <div
-                  key={payment.id}
-                  className="grid gap-1 p-4 text-sm sm:grid-cols-4"
-                >
-                  <span className="font-medium">
-                    ₹{Number(payment.amount).toLocaleString("en-IN")}
-                  </span>
-                  <span>
-                    {new Date(payment.disbursement_date).toLocaleDateString(
-                      "en-IN",
-                    )}
-                  </span>
-                  <span className="capitalize">{payment.status}</span>
-                  <span>{payment.transaction_id ?? "No transaction ID"}</span>
-                </div>
-              ))}
-              {!application.benefit_disbursements?.length && (
-                <Empty text="No benefit disbursements are recorded." />
-              )}
-            </Card>
+            <div className="space-y-3">
+              <BenefitDisbursementActions application={application} />
+            </div>
           </TabsContent>
           <TabsContent value="audit">
             <Card className="divide-y">

@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-C7pTCAcE.js";import{t}from"./useNavigate-DsyqLLlh.js";var n=e(),r=()=>(0,n.jsx)(t,{to:`/login`,replace:!0});export{r as component};

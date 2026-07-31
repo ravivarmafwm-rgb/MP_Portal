@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { downloadCensus, fetchCensus, getApiErrorMessage } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/surveys/census")({
   head: () => ({ meta: [{ title: "Constituency Census — MP Constituency" }] }),
@@ -17,6 +18,14 @@ export const Route = createFileRoute("/_app/surveys/census")({
 
 function CensusCenter() {
   const [exporting, setExporting] = useState(false);
+  const { user } = useAuth();
+  const canExport = [
+    "super-admin",
+    "mp",
+    "mp-staff",
+    "constituency-coordinator",
+    "assembly-coordinator",
+  ].includes(user?.role_slug ?? "");
   const query = useQuery({
     queryKey: ["constituency-census"],
     queryFn: fetchCensus,
@@ -69,19 +78,21 @@ function CensusCenter() {
         title="Constituency Census Center"
         description="Scoped aggregates calculated from registered citizens and households."
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={exporting}
-            onClick={exportReport}
-          >
-            {exporting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="mr-2 h-4 w-4" />
-            )}
-            Download CSV
-          </Button>
+          canExport ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={exporting}
+              onClick={exportReport}
+            >
+              {exporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Download CSV
+            </Button>
+          ) : undefined
         }
       />
       <div className="space-y-4 p-4 md:p-8">

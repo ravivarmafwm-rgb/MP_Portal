@@ -1,15 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertCircle, Search } from "lucide-react";
+import { AlertCircle, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { FamilyTree } from "@/components/citizens/FamilyTree";
+import { FamilyDialog } from "@/components/citizens/FamilyDialog";
+import { FamilyMemberDialog } from "@/components/citizens/FamilyMemberDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchFamilies } from "@/lib/api";
+import {
+  deleteFamily,
+  fetchFamilies,
+  getApiErrorMessage,
+  removeFamilyMember,
+} from "@/lib/api";
+import { toast } from "sonner";
 import type { Family } from "@/lib/citizen-types";
 
 export const Route = createFileRoute("/_app/citizens/families")({
@@ -19,6 +27,29 @@ export const Route = createFileRoute("/_app/citizens/families")({
 function FamiliesPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const client = useQueryClient();
+  const removeMember = useMutation({
+    mutationFn: ({
+      familyId,
+      memberId,
+    }: {
+      familyId: string;
+      memberId: string;
+    }) => removeFamilyMember(familyId, memberId),
+    onSuccess: async () => {
+      toast.success("Family member removed.");
+      await client.invalidateQueries({ queryKey: ["families"] });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+  const archive = useMutation({
+    mutationFn: deleteFamily,
+    onSuccess: async () => {
+      toast.success("Empty family archived.");
+      await client.invalidateQueries({ queryKey: ["families"] });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
   const query = useQuery({
     queryKey: ["families", search, page],
     queryFn: () => fetchFamilies({ search, page, per_page: 10 }),
@@ -28,6 +59,7 @@ function FamiliesPage() {
       <PageHeader
         title="Family Management"
         description="Registered households and their persisted citizen relationships."
+        actions={<FamilyDialog />}
       />
       <div className="space-y-5 p-4 md:p-8">
         <Card className="p-4">
@@ -108,19 +140,101 @@ function FamiliesPage() {
                     </div>
                   </div>
                   {family.members.length ? (
-                    <FamilyTree family={family} />
+                    <div className="space-y-3">
+                      <FamilyTree family={family} />
+                      <div className="space-y-2 border-t pt-3">
+                        {record.family_members
+                          .filter((member) => !member.is_head)
+                          .map((member) => (
+                            <div
+                              key={member.id}
+                              className="flex items-center justify-between gap-3 text-sm"
+                            >
+                              <span>
+                                {member.citizen.first_name}{" "}
+                                {member.citizen.last_name} ·{" "}
+                                {member.relationship_with_head}
+                              </span>
+                              <div className="flex gap-1">
+                                <FamilyMemberDialog
+                                  familyId={record.id}
+                                  member={member}
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={removeMember.isPending}
+                                  onClick={() => {
+                                    if (
+                                      window.confirm(
+                                        "Remove this citizen from the family?",
+                                      )
+                                    )
+                                      removeMember.mutate({
+                                        familyId: record.id,
+                                        memberId: member.id,
+                                      });
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" /> Remove
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
                   ) : (
                     <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
                       No family members are linked.
                     </div>
                   )}
                   {head && (
-                    <div className="mt-3 text-right">
+                    <div className="mt-3 flex flex-wrap justify-end gap-2">
+                      <FamilyDialog family={record} />
+                      <FamilyMemberDialog familyId={record.id} />
                       <Button asChild variant="outline" size="sm">
                         <Link to="/citizens/profile" search={{ id: head.id }}>
                           Open head profile
                         </Link>
                       </Button>
+                    </div>
+                  )}
+                  {!head && (
+                    <div className="mt-3 flex justify-end gap-2">
+                      <FamilyMemberDialog familyId={record.id} />
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={archive.isPending}
+                        onClick={() => {
+                          if (window.confirm("Archive this empty family?"))
+                            archive.mutate(record.id);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" /> Archive
+                      </Button>
+                    </div>
+                  )}
+                  {record.activity_logs && record.activity_logs.length > 0 && (
+                    <div className="mt-4 border-t pt-3">
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Family history
+                      </div>
+                      <div className="space-y-2">
+                        {record.activity_logs.slice(0, 5).map((entry) => (
+                          <div
+                            key={entry.id}
+                            className="flex justify-between gap-3 text-xs text-muted-foreground"
+                          >
+                            <span>{entry.description}</span>
+                            <span>
+                              {new Date(entry.created_at).toLocaleDateString(
+                                "en-IN",
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </Card>

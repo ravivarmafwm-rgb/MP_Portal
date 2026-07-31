@@ -1,22 +1,15 @@
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Phone,
-  MessageCircle,
-  ArrowUpRight,
   MapPin,
   Calendar,
   AlertCircle,
   Building2,
   User,
-  FileText,
-  Image as ImageIcon,
-  History,
   CheckCircle2,
-  Star,
   ShieldCheck,
-  Download,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -33,16 +26,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { fetchGrievance, updateGrievance } from "@/lib/api";
+import { fetchGrievance } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { GrievanceAssignmentDialog } from "@/components/grievances/GrievanceAssignmentDialog";
+import { GrievanceEscalationDialog } from "@/components/grievances/GrievanceEscalationDialog";
+import { getApiErrorMessage } from "@/lib/api";
+import { GrievanceWorkflowActions } from "@/components/grievances/GrievanceWorkflowActions";
+import { useAuth } from "@/lib/auth";
+import { DocumentRepository } from "@/components/documents/DocumentRepository";
 
 export const Route = createFileRoute("/_app/grievances/detail")({
   validateSearch: (s: Record<string, unknown>) => ({ id: String(s.id ?? "") }),
@@ -61,23 +52,18 @@ const statusTone: Record<string, string> = {
 
 function GrievanceDetailPage() {
   const { id } = useSearch({ from: "/_app/grievances/detail" });
-  const qc = useQueryClient();
+  const { user } = useAuth();
 
-  const { data: grievance, isLoading } = useQuery({
+  const {
+    data: grievance,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["grievance-detail", id],
     queryFn: () => fetchGrievance(id),
     enabled: Boolean(id),
     staleTime: 30_000,
-  });
-
-  const { mutate: doUpdate } = useMutation({
-    mutationFn: ({ status }: { status: string }) =>
-      updateGrievance(String(grievance?.id ?? ""), { status }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["grievance-detail", id] });
-      toast.success("Status updated");
-    },
-    onError: () => toast.error("Update failed"),
   });
 
   if (isLoading)
@@ -86,6 +72,12 @@ function GrievanceDetailPage() {
         {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} className="h-20 w-full" />
         ))}
+      </div>
+    );
+  if (isError)
+    return (
+      <div className="p-8 text-center text-sm text-destructive">
+        {getApiErrorMessage(error)}
       </div>
     );
   if (!grievance)
@@ -108,24 +100,14 @@ function GrievanceDetailPage() {
       actor: String(g.citizen_name ?? "Citizen"),
       type: "create",
     },
-    {
-      id: "t2",
-      date: String(g.updated_at ?? "").substring(0, 10),
-      event: "Status: " + String(g.status ?? "pending"),
-      actor: "System",
-      type: "update",
-    },
+    ...(g.updates ?? []).map((update) => ({
+      id: update.id,
+      date: String(update.created_at).substring(0, 10),
+      event: update.remarks || `Status changed to ${update.to_status}`,
+      actor: update.updated_by?.name ?? "Authorized staff",
+      type: update.update_type,
+    })),
   ];
-
-  if (String(g.status) === "resolved" || String(g.status) === "closed") {
-    timeline.push({
-      id: "t3",
-      date: String(g.resolved_date ?? g.updated_at ?? "").substring(0, 10),
-      event: "Resolved",
-      actor: "Department",
-      type: "resolve",
-    });
-  }
 
   return (
     <>
@@ -133,21 +115,17 @@ function GrievanceDetailPage() {
         title="Case 360"
         description={`${String(g.grievance_number ?? "")} — complete view of this grievance`}
         actions={
-          <>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <MessageCircle className="h-4 w-4" /> Message
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <ArrowUpRight className="h-4 w-4" /> Escalate
-            </Button>
-            <Button
-              size="sm"
-              className="gap-1.5"
-              onClick={() => doUpdate({ status: "resolved" })}
-            >
-              <CheckCircle2 className="h-4 w-4" /> Mark Resolved
-            </Button>
-          </>
+          <div className="flex gap-2">
+            <GrievanceAssignmentDialog grievanceId={g.id} />
+            <GrievanceEscalationDialog grievanceId={g.id} />
+            {user && (
+              <GrievanceWorkflowActions
+                grievance={g}
+                userId={user.id}
+                roleSlug={user.role_slug}
+              />
+            )}
+          </div>
         }
       />
       <div className="space-y-6 p-4 md:p-8">
@@ -211,24 +189,6 @@ function GrievanceDetailPage() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Select
-                    defaultValue={String(g.status ?? "pending")}
-                    onValueChange={(v) => doUpdate({ status: v })}
-                  >
-                    <SelectTrigger className="h-8 w-[160px] text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="assigned">Assigned</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="escalated">Escalated</SelectItem>
-                      <SelectItem value="resolved">Resolved</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             </div>
           </Card>
@@ -278,36 +238,8 @@ function GrievanceDetailPage() {
               </Card>
               <Card className="p-5">
                 <h3 className="text-sm font-semibold">Quick Actions</h3>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="justify-start gap-1.5"
-                  >
-                    <User className="h-4 w-4" /> Reassign
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="justify-start gap-1.5"
-                    onClick={() => doUpdate({ status: "escalated" })}
-                  >
-                    <ArrowUpRight className="h-4 w-4" /> Escalate
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="justify-start gap-1.5"
-                  >
-                    <Phone className="h-4 w-4" /> Call Citizen
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="justify-start gap-1.5"
-                  >
-                    <FileText className="h-4 w-4" /> Generate Report
-                  </Button>
+                <div className="mt-3">
+                  <GrievanceAssignmentDialog grievanceId={g.id} />
                 </div>
               </Card>
             </div>
@@ -394,41 +326,7 @@ function GrievanceDetailPage() {
 
           {/* ATTACHMENTS */}
           <TabsContent value="attachments">
-            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-              {["Site Photo", "Complaint Letter", "Supporting Document"].map(
-                (name, i) => (
-                  <Card key={name} className="overflow-hidden">
-                    <div
-                      className={cn(
-                        "grid h-32 place-items-center",
-                        i === 0
-                          ? "bg-gradient-to-br from-info/20 to-info/5"
-                          : i === 1
-                            ? "bg-gradient-to-br from-primary/20 to-primary/5"
-                            : "bg-gradient-to-br from-success/20 to-success/5",
-                      )}
-                    >
-                      <FileText className="h-10 w-10 text-foreground/40" />
-                    </div>
-                    <div className="p-3">
-                      <div className="truncate text-xs font-semibold">
-                        {name}
-                      </div>
-                      <div className="mt-0.5 text-[10px] text-muted-foreground">
-                        Upload to attach
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2 h-7 w-full gap-1 text-xs"
-                      >
-                        <Download className="h-3 w-3" /> Upload
-                      </Button>
-                    </div>
-                  </Card>
-                ),
-              )}
-            </div>
+            <DocumentRepository type="grievance" documentableId={g.id} />
           </TabsContent>
 
           {/* DEPARTMENT ACTIONS */}
@@ -444,39 +342,37 @@ function GrievanceDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow>
-                    <TableCell className="text-xs">
-                      {String(g.created_at ?? "").substring(0, 10)}
-                    </TableCell>
-                    <TableCell>System</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className="bg-primary/10 text-primary"
-                      >
-                        Case Created
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      Grievance registered via {String(g.source ?? "portal")}
-                    </TableCell>
-                  </TableRow>
-                  {String(g.status) !== "pending" && (
-                    <TableRow>
+                  {(g.assignments ?? []).map((assignment) => (
+                    <TableRow key={assignment.id}>
                       <TableCell className="text-xs">
-                        {String(g.updated_at ?? "").substring(0, 10)}
+                        {String(assignment.assigned_date).substring(0, 10)}
                       </TableCell>
-                      <TableCell>Staff</TableCell>
+                      <TableCell>
+                        {assignment.assigned_to?.name ?? "Unassigned"}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant="secondary"
                           className="bg-info/10 text-info"
                         >
-                          Status Updated
+                          {assignment.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        Status changed to {String(g.status ?? "")}
+                        {assignment.department?.name ?? "No department"}
+                        {assignment.instructions
+                          ? ` · ${assignment.instructions}`
+                          : ""}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {!g.assignments?.length && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="text-center text-muted-foreground"
+                      >
+                        No department assignment has been recorded.
                       </TableCell>
                     </TableRow>
                   )}
@@ -557,12 +453,15 @@ function GrievanceDetailPage() {
                   <p className="text-sm text-muted-foreground">
                     This grievance is not yet resolved.
                   </p>
-                  <Button
-                    className="mt-3 gap-2"
-                    onClick={() => doUpdate({ status: "resolved" })}
-                  >
-                    <CheckCircle2 className="h-4 w-4" /> Mark as Resolved
-                  </Button>
+                  {user && (
+                    <div className="mt-3 flex justify-center">
+                      <GrievanceWorkflowActions
+                        grievance={g}
+                        userId={user.id}
+                        roleSlug={user.role_slug}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </Card>
@@ -581,39 +480,37 @@ function GrievanceDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {[
-                    {
-                      date: String(g.created_at ?? "").substring(0, 10),
-                      user: "System",
-                      action: "CREATED",
-                      remarks:
-                        "Grievance created via " + String(g.source ?? "portal"),
-                    },
-                    {
-                      date: String(g.updated_at ?? "").substring(0, 10),
-                      user: "Staff",
-                      action: "STATUS_UPDATED",
-                      remarks: "Status: " + String(g.status ?? ""),
-                    },
-                  ].map((a, i) => (
-                    <TableRow key={i}>
+                  {(g.updates ?? []).map((a) => (
+                    <TableRow key={a.id}>
                       <TableCell className="text-xs tabular-nums">
-                        {a.date}
+                        {String(a.created_at).substring(0, 10)}
                       </TableCell>
-                      <TableCell className="text-sm">{a.user}</TableCell>
+                      <TableCell className="text-sm">
+                        {a.updated_by?.name ?? "Authorized staff"}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant="secondary"
                           className="bg-muted font-mono text-[10px]"
                         >
-                          {a.action}
+                          {a.update_type}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {a.remarks}
+                        {a.remarks ?? `${a.from_status} → ${a.to_status}`}
                       </TableCell>
                     </TableRow>
                   ))}
+                  {!g.updates?.length && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="text-center text-muted-foreground"
+                      >
+                        No workflow updates have been recorded.
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </Card>

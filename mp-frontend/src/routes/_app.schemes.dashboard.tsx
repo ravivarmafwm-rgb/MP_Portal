@@ -1,7 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { FileBadge, CheckCircle2, Clock, XCircle, Users } from "lucide-react";
+import {
+  AlertCircle,
+  FileBadge,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Users,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,17 +23,18 @@ export const Route = createFileRoute("/_app/schemes/dashboard")({
 });
 
 function SchemesDashboardPage() {
-  const { data: stats } = useQuery({
+  const statsQuery = useQuery({
     queryKey: ["scheme-stats"],
     queryFn: fetchSchemeStats,
     staleTime: 60_000,
   });
-  const { data: schemesData, isLoading } = useQuery({
+  const schemesQuery = useQuery({
     queryKey: ["schemes-list"],
     queryFn: () => fetchSchemes({ active_only: "1", per_page: 10 }),
     staleTime: 60_000,
   });
-  const schemes = schemesData?.data ?? [];
+  const stats = statsQuery.data;
+  const schemes = schemesQuery.data?.data ?? [];
 
   const kpis = [
     {
@@ -62,33 +70,44 @@ function SchemesDashboardPage() {
         description="Welfare schemes, applications and beneficiary tracking"
       />
       <div className="space-y-6 p-4 md:p-8">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {kpis.map((k, i) => (
-            <motion.div
-              key={k.label}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-            >
-              <Card className="p-5">
-                <div
-                  className={cn(
-                    "grid h-10 w-10 place-items-center rounded-xl",
-                    k.tone,
-                  )}
-                >
-                  <k.icon className="h-5 w-5" />
-                </div>
-                <div className="mt-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  {k.label}
-                </div>
-                <div className="mt-1 font-display text-3xl font-bold tabular-nums">
-                  {k.value.toLocaleString()}
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+        {statsQuery.isError && (
+          <ErrorState message="Scheme statistics could not be loaded." />
+        )}
+        {statsQuery.isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-32" />
+            ))}
+          </div>
+        ) : stats ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {kpis.map((k, i) => (
+              <motion.div
+                key={k.label}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+              >
+                <Card className="p-5">
+                  <div
+                    className={cn(
+                      "grid h-10 w-10 place-items-center rounded-xl",
+                      k.tone,
+                    )}
+                  >
+                    <k.icon className="h-5 w-5" />
+                  </div>
+                  <div className="mt-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {k.label}
+                  </div>
+                  <div className="mt-1 font-display text-3xl font-bold tabular-nums">
+                    {k.value.toLocaleString()}
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        ) : null}
 
         {stats && (
           <div className="grid gap-4 sm:grid-cols-3">
@@ -137,12 +156,14 @@ function SchemesDashboardPage() {
               <Link to="/schemes/scheme-catalog">View All</Link>
             </Button>
           </div>
-          {isLoading ? (
+          {schemesQuery.isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-14 w-full" />
               ))}
             </div>
+          ) : schemesQuery.isError ? (
+            <ErrorState message="Active schemes could not be loaded." />
           ) : (
             <div className="divide-y divide-border/60">
               {schemes.map((s, i) => (
@@ -182,5 +203,14 @@ function SchemesDashboardPage() {
         </Card>
       </div>
     </>
+  );
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <div className="flex items-center justify-center gap-2 p-8 text-sm text-destructive">
+      <AlertCircle className="h-5 w-5" />
+      {message}
+    </div>
   );
 }

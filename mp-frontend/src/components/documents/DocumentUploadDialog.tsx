@@ -31,7 +31,7 @@ export function DocumentUploadDialog({
   type,
   documentableId,
 }: {
-  type: "citizen" | "project";
+  type: "citizen" | "project" | "grievance";
   documentableId: string;
 }) {
   const client = useQueryClient();

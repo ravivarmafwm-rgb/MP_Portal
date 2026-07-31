@@ -30,6 +30,7 @@ import {
   deleteProjectMilestone,
   deleteProjectPhoto,
   fetchProject,
+  fetchProjectWorkflow,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -39,6 +40,7 @@ import { ProjectMilestoneDialog } from "@/components/projects/ProjectMilestoneDi
 import { DeleteProjectRecordButton } from "@/components/projects/DeleteProjectRecordButton";
 import { ProjectPhotoDialog } from "@/components/projects/ProjectPhotoDialog";
 import { ProjectPhotoImage } from "@/components/projects/ProjectPhotoImage";
+import { ProjectWorkflowDialog } from "@/components/projects/ProjectWorkflowDialog";
 
 export const Route = createFileRoute("/_app/projects/project-detail")({
   validateSearch: (s: Record<string, unknown>) => ({ id: String(s.id ?? "") }),
@@ -66,6 +68,11 @@ function ProjectDetail() {
     queryFn: () => fetchProject(projectId!),
     enabled: !!projectId,
     staleTime: 30_000,
+  });
+  const workflow = useQuery({
+    queryKey: ["project-workflow", projectId],
+    queryFn: () => fetchProjectWorkflow(projectId!),
+    enabled: !!projectId,
   });
 
   if (!id)
@@ -233,6 +240,9 @@ function ProjectDetail() {
             </TabsTrigger>
             <TabsTrigger value="photos">
               <ImageIcon className="mr-1.5 h-3.5 w-3.5" /> Photos
+            </TabsTrigger>
+            <TabsTrigger value="workflow">
+              <History className="mr-1.5 h-3.5 w-3.5" /> Workflow
             </TabsTrigger>
           </TabsList>
 
@@ -634,6 +644,50 @@ function ProjectDetail() {
                 ))}
               </div>
             )}
+          </TabsContent>
+          <TabsContent value="workflow" className="mt-4">
+            <Card className="p-5">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-base font-bold">
+                  Approvals, sanctions and site records
+                </h3>
+                {canManage && <ProjectWorkflowDialog projectId={projectId} />}
+              </div>
+              <div className="mt-4 space-y-2">
+                {workflow.data?.data.map((entry) => (
+                  <div key={entry.id} className="rounded-lg border p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium">{entry.title}</div>
+                      <Badge variant="secondary" className="capitalize">
+                        {entry.status.replaceAll("_", " ")}
+                      </Badge>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {entry.entry_type.replaceAll("_", " ")}{" "}
+                      {entry.reference_number
+                        ? `· ${entry.reference_number}`
+                        : ""}{" "}
+                      {entry.entry_date ? `· ${entry.entry_date}` : ""}
+                    </div>
+                    {entry.amount != null && (
+                      <div className="mt-1 text-xs">
+                        Amount: ₹{Number(entry.amount).toLocaleString("en-IN")}
+                      </div>
+                    )}
+                    {entry.notes && (
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        {entry.notes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {workflow.data && !workflow.data.data.length && (
+                  <p className="text-sm text-muted-foreground">
+                    No workflow records have been added.
+                  </p>
+                )}
+              </div>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

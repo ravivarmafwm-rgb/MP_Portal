@@ -6,23 +6,44 @@ use App\Http\Controllers\Controller;
 use App\Models\Citizen;
 use App\Models\CitizenAddress;
 use App\Models\Family;
-use App\Models\FamilyMember;
 use App\Models\ActivityLog;
-use App\Services\NotificationService;
 use App\Services\GeographicScopeService;
 use App\Http\Requests\Citizen\MapCitizenBoothRequest;
+use App\Http\Requests\Citizen\StoreCitizenRequest;
+use App\Http\Requests\Citizen\UpdateCitizenRequest;
+use App\Http\Requests\Citizen\ImportCitizensRequest;
+use App\Http\Requests\Citizen\BulkUpdateCitizensRequest;
+use App\Http\Requests\Citizen\BulkArchiveCitizensRequest;
+use App\Http\Requests\Citizen\SaveCitizenAddressRequest;
+use App\Services\CitizenEnrollmentService;
+use App\Services\CitizenAddressService;
+use App\Jobs\ProcessCitizenImport;
+use App\Models\CitizenImportBatch;
+use App\Models\CitizenImportRow;
 use App\Http\Resources\CitizenBoothResource;
+use App\Http\Resources\CitizenSelfResource;
+use App\Http\Resources\CitizenResource;
+use App\Http\Resources\CitizenAddressResource;
 use App\Models\PollingBooth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CitizenController extends Controller
 {
+    public function me(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->hasRole('citizen'), 403);
+        abort_unless($request->user()->citizen_id, 409, 'This account is not linked to a citizen record. Contact the constituency office.');
+        $citizen = Citizen::with(['addresses.village:id,name', 'addresses.ward:id,name'])
+            ->withCount(['grievances', 'schemeApplications', 'surveyResponses', 'documents'])
+            ->findOrFail($request->user()->citizen_id);
+        $this->authorize('view', $citizen);
+
+        return response()->json((new CitizenSelfResource($citizen))->resolve($request));
+    }
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Citizen::class);
@@ -49,12 +70,29 @@ class CitizenController extends Controller
         if ($occupation = $request->get('occupation')) {
             $query->where('occupation', 'ilike', "%$occupation%");
         }
+        if ($request->filled('is_voter')) {
+            $query->where('is_voter', filter_var($request->get('is_voter'), FILTER_VALIDATE_BOOLEAN));
+        }
+        if ($village = $request->get('village_id')) {
+            $query->whereHas('addresses', fn ($addresses) => $addresses->where('village_id', $village));
+        }
+        if ($ward = $request->get('ward_id')) {
+            $query->whereHas('addresses', fn ($addresses) => $addresses->where('ward_id', $ward));
+        }
+        if ($ageGroup = $request->get('age_group')) {
+            match ($ageGroup) {
+                'child' => $query->where('date_of_birth', '>', now()->subYears(18)->toDateString()),
+                'adult' => $query->whereBetween('date_of_birth', [now()->subYears(60)->toDateString(), now()->subYears(18)->toDateString()]),
+                'senior' => $query->where('date_of_birth', '<', now()->subYears(60)->toDateString()),
+                default => null,
+            };
+        }
 
         $perPage = min((int) $request->get('per_page', 20), 100);
         $citizens = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json([
-            'data' => $citizens->items(),
+            'data' => CitizenResource::collection($citizens->getCollection())->resolve(),
             'meta' => [
                 'total' => $citizens->total(),
                 'per_page' => $citizens->perPage(),
@@ -74,141 +112,179 @@ class CitizenController extends Controller
             'grievances.category',
             'schemeApplications.scheme.department',
             'surveyResponses.survey',
+            'appointments' => fn ($query) => $query->latest('requested_date'),
             'interactions',
-            'documents.category',
+            'documents.documentCategory',
             'activityLogs' => fn ($query) => $query->with('user:id,name')->latest(),
         ])->findOrFail($id);
         $this->authorize('view', $citizen);
 
-        return response()->json($citizen);
+        $villageIds = $citizen->addresses()->whereNotNull('village_id')->pluck('village_id');
+        $projects = $villageIds->isEmpty()
+            ? collect()
+            : \App\Models\Project::with('village:id,name')->whereIn('village_id', $villageIds)
+                ->orderByDesc('created_at')->limit(100)->get();
+
+        return response()->json((new CitizenResource($citizen->setAttribute('related_projects', $projects)))->resolve($request));
     }
 
-    public function store(Request $request): JsonResponse
+    public function addresses(Request $request, Citizen $citizen): JsonResponse
     {
-        $this->authorize('create', Citizen::class);
-        $data = $request->validate([
-            'first_name'      => 'required|string|max:100',
-            'last_name'       => 'required|string|max:100',
-            'middle_name'     => 'nullable|string|max:100',
-            'date_of_birth'   => 'required|date',
-            'gender'          => 'required|in:Male,Female,Other',
-            'mobile_number'   => ['nullable', 'string', 'max:15', Rule::unique('citizens', 'mobile_number')->whereNotNull('mobile_number')],
-            'aadhaar_number'  => ['nullable', 'regex:/^[0-9]{12}$/'],
-            'voter_id'        => ['nullable', 'string', Rule::unique('citizens', 'voter_id')->whereNotNull('voter_id')],
-            'occupation'      => 'nullable|string|max:100',
-            'education'       => 'nullable|string|max:100',
-            'marital_status'  => 'nullable|string|max:30',
-            'father_name'     => 'nullable|string|max:100',
-            'mother_name'     => 'nullable|string|max:100',
-            'blood_group'     => 'nullable|string|max:5',
-            'email'           => 'nullable|email|max:150',
-            'is_voter'        => 'boolean',
-            // Address
-            'village_id'      => 'nullable|uuid|exists:villages,id',
-            'ward_id'         => 'nullable|uuid|exists:wards,id',
-            'polling_booth_id'=> 'nullable|uuid|exists:polling_booths,id',
-            'house_number'    => 'nullable|string',
-            'street'          => 'nullable|string',
-            'pincode'         => 'nullable|string|max:10',
-            'district'        => 'nullable|string|max:100',
-            'state'           => 'nullable|string|max:100',
-            // Family
-            'family_id'       => 'nullable|uuid|exists:families,id',
-            'relationship_with_head' => 'nullable|string',
-        ]);
-
-        if (!empty($data['aadhaar_number']) && Citizen::where('aadhaar_hash', hash_hmac('sha256', $data['aadhaar_number'], config('app.key')))->exists()) {
-            throw ValidationException::withMessages(['aadhaar_number' => ['This Aadhaar number is already registered.']]);
+        $this->authorize('view', $citizen);
+        $query = $citizen->addresses()->with(['village.mandal', 'ward', 'pollingBooth']);
+        if ($type = trim((string) $request->get('address_type'))) $query->where('address_type', $type);
+        if ($request->filled('is_primary')) $query->where('is_primary', filter_var($request->get('is_primary'), FILTER_VALIDATE_BOOLEAN));
+        if ($search = trim((string) $request->get('search'))) {
+            $query->where(fn ($q) => $q->where('house_number', 'like', "%{$search}%")
+                ->orWhere('street', 'like', "%{$search}%")
+                ->orWhere('locality', 'like', "%{$search}%")
+                ->orWhere('pincode', 'like', "%{$search}%")
+                ->orWhere('district', 'like', "%{$search}%"));
         }
-        abort_unless(app(GeographicScopeService::class)->allowsVillage($request->user(), $data['village_id'] ?? null, $data['ward_id'] ?? null), 403, 'The selected location is outside your assigned area.');
-
-        $citizen = Citizen::create([
-            'unique_id'    => 'CIT' . strtoupper(Str::random(8)),
-            'first_name'   => $data['first_name'],
-            'last_name'    => $data['last_name'],
-            'middle_name'  => $data['middle_name'] ?? null,
-            'date_of_birth'=> $data['date_of_birth'],
-            'gender'       => $data['gender'],
-            'mobile_number'=> $data['mobile_number'] ?? null,
-            'aadhaar_number' => $data['aadhaar_number'] ?? null,
-            'voter_id'     => $data['voter_id'] ?? null,
-            'occupation'   => $data['occupation'] ?? null,
-            'education'    => $data['education'] ?? null,
-            'marital_status' => $data['marital_status'] ?? null,
-            'father_name'  => $data['father_name'] ?? null,
-            'mother_name'  => $data['mother_name'] ?? null,
-            'blood_group'  => $data['blood_group'] ?? null,
-            'email'        => $data['email'] ?? null,
-            'is_voter'     => $data['is_voter'] ?? false,
-            'created_by'   => $request->user()->id,
-        ]);
-
-        // Save address
-        if (!empty($data['village_id']) || !empty($data['pincode'])) {
-            CitizenAddress::create([
-                'citizen_id'       => $citizen->id,
-                'address_type'     => 'permanent',
-                'village_id'       => $data['village_id'] ?? null,
-                'ward_id'          => $data['ward_id'] ?? null,
-                'polling_booth_id' => $data['polling_booth_id'] ?? null,
-                'house_number'     => $data['house_number'] ?? null,
-                'street'           => $data['street'] ?? null,
-                'pincode'          => $data['pincode'] ?? '000000',
-                'district'         => $data['district'] ?? 'Unknown',
-                'state'            => $data['state'] ?? 'Telangana',
-                'is_primary'       => true,
-                'created_by'       => $request->user()->id,
-            ]);
-        }
-
-        // Link to family
-        if (!empty($data['family_id'])) {
-            FamilyMember::create([
-                'family_id'              => $data['family_id'],
-                'citizen_id'             => $citizen->id,
-                'relationship_with_head' => $data['relationship_with_head'] ?? 'Member',
-                'is_head'                => false,
-                'created_by'             => $request->user()->id,
-            ]);
-        }
-
-        // Audit log
-        ActivityLog::create([
-            'user_id'     => $request->user()->id,
-            'action'      => 'citizen_created',
-            'description' => "Citizen {$citizen->first_name} {$citizen->last_name} ({$citizen->unique_id}) enrolled",
-            'module'      => 'citizens',
-        ]);
-
-        NotificationService::notifyRoles(
-            ['mp', 'mla', 'mp-staff', 'constituency-coordinator'],
-            'New Citizen Enrolled',
-            "{$citizen->first_name} {$citizen->last_name} ({$citizen->unique_id}) was enrolled by {$request->user()->name}.",
-            'citizen',
-            '/citizens/list',
-            $citizen,
-        );
-
-        return response()->json($citizen->fresh(['addresses', 'families']), 201);
+        $results = $query->orderByDesc('is_primary')->latest()->paginate(min(max((int) $request->get('per_page', 20), 1), 100));
+        return response()->json(['data' => CitizenAddressResource::collection($results->getCollection())->resolve(), 'meta' => [
+            'total' => $results->total(), 'per_page' => $results->perPage(), 'current_page' => $results->currentPage(), 'last_page' => $results->lastPage(),
+        ]]);
     }
 
-    public function update(Request $request, string $id): JsonResponse
+    public function storeAddress(SaveCitizenAddressRequest $request, Citizen $citizen, CitizenAddressService $service): JsonResponse
     {
-        $citizen = Citizen::findOrFail($id);
+        return response()->json((new CitizenAddressResource($service->create($citizen, $request->validated(), $request->user(), $request)))->resolve($request), 201);
+    }
+
+    public function updateAddress(SaveCitizenAddressRequest $request, Citizen $citizen, CitizenAddress $address, CitizenAddressService $service): JsonResponse
+    {
+        abort_unless($address->citizen_id === $citizen->id, 404);
+        return response()->json((new CitizenAddressResource($service->update($address, $request->validated(), $request->user(), $request)))->resolve($request));
+    }
+
+    public function destroyAddress(Request $request, Citizen $citizen, CitizenAddress $address, CitizenAddressService $service): JsonResponse
+    {
         $this->authorize('update', $citizen);
+        abort_unless($address->citizen_id === $citizen->id, 404);
+        $service->archive($address, $request->user(), $request);
+        return response()->json(null, 204);
+    }
 
-        $data = $request->validate([
-            'first_name'   => 'sometimes|string|max:100',
-            'last_name'    => 'sometimes|string|max:100',
-            'mobile_number'=> 'nullable|string|max:15',
-            'occupation'   => 'nullable|string|max:100',
-            'education'    => 'nullable|string|max:100',
-            'email'        => 'nullable|email|max:150',
+    public function store(StoreCitizenRequest $request, CitizenEnrollmentService $service): JsonResponse
+    {
+        return response()->json((new CitizenResource($service->create($request->validated(), $request->user(), $request)))->resolve($request), 201);
+    }
+
+    public function update(UpdateCitizenRequest $request, Citizen $citizen, CitizenEnrollmentService $service): JsonResponse
+    {
+        return response()->json((new CitizenResource($service->update($citizen, $request->validated(), $request->user(), $request)))->resolve($request));
+    }
+
+    public function destroy(Request $request, Citizen $citizen): JsonResponse
+    {
+        $this->authorize('delete', $citizen);
+        if ($citizen->userAccount()->exists() || $citizen->familyMembers()->exists()
+            || $citizen->grievances()->exists() || $citizen->schemeApplications()->exists()
+            || $citizen->schemeBeneficiaries()->exists() || $citizen->surveyResponses()->exists()
+            || $citizen->documents()->exists()) {
+            return response()->json(['message' => 'Citizens with linked accounts, family membership, cases, benefits, surveys, or documents cannot be archived.'], 409);
+        }
+        DB::transaction(function () use ($citizen, $request) {
+            ActivityLog::create([
+                'user_id' => $request->user()->id, 'loggable_type' => Citizen::class, 'loggable_id' => $citizen->id,
+                'action' => 'citizen_archived', 'module' => 'citizens', 'description' => 'Citizen record archived',
+                'old_values' => $citizen->getAttributes(), 'ip_address' => $request->ip(), 'user_agent' => $request->userAgent(),
+            ]);
+            $citizen->addresses()->delete();
+            $citizen->delete();
+        });
+        return response()->json(null, 204);
+    }
+
+    public function bulkUpdate(BulkUpdateCitizensRequest $request, CitizenEnrollmentService $service): JsonResponse
+    {
+        $data = $request->validated();
+        $fields = collect($data)->except('citizen_ids')->all();
+        $updated = 0;
+        DB::transaction(function () use ($data, $fields, $request, $service, &$updated): void {
+            foreach ($data['citizen_ids'] as $id) {
+                $citizen = Citizen::findOrFail($id);
+                $this->authorize('update', $citizen);
+                $service->update($citizen, $fields, $request->user(), $request);
+                $updated++;
+            }
+        });
+        return response()->json(['updated' => $updated]);
+    }
+
+    public function bulkArchive(BulkArchiveCitizensRequest $request): JsonResponse
+    {
+        $archived = 0;
+        DB::transaction(function () use ($request, &$archived): void {
+            foreach ($request->validated('citizen_ids') as $id) {
+                $citizen = Citizen::findOrFail($id);
+                $this->authorize('delete', $citizen);
+                if ($citizen->userAccount()->exists() || $citizen->familyMembers()->exists()
+                    || $citizen->grievances()->exists() || $citizen->schemeApplications()->exists()
+                    || $citizen->schemeBeneficiaries()->exists() || $citizen->surveyResponses()->exists()
+                    || $citizen->documents()->exists()) {
+                    throw ValidationException::withMessages(['citizen_ids' => ["Citizen {$citizen->unique_id} has linked records and cannot be archived."]]);
+                }
+                ActivityLog::create([
+                    'user_id' => $request->user()->id, 'loggable_type' => Citizen::class, 'loggable_id' => $citizen->id,
+                    'action' => 'citizen_archived', 'module' => 'citizens', 'description' => 'Citizen record archived in bulk',
+                    'old_values' => $citizen->getAttributes(), 'ip_address' => $request->ip(), 'user_agent' => $request->userAgent(),
+                ]);
+                $citizen->addresses()->delete();
+                $citizen->delete();
+                $archived++;
+            }
+        });
+        return response()->json(['archived' => $archived]);
+    }
+
+    public function import(ImportCitizensRequest $request): JsonResponse
+    {
+        $file = $request->file('file');
+        $path = $file->store('citizen-imports', 'local');
+        $batch = CitizenImportBatch::create([
+            'created_by' => $request->user()->id,
+            'original_filename' => $file->getClientOriginalName(),
+            'storage_path' => $path,
+            'status' => 'queued',
         ]);
+        ProcessCitizenImport::dispatch($batch->id);
+        return response()->json($batch, 202);
+    }
 
-        $citizen->update(array_merge($data, ['updated_by' => $request->user()->id]));
+    public function imports(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', CitizenImportBatch::class);
+        $query = CitizenImportBatch::query()->latest();
+        if (!$request->user()->hasRole('super-admin')) $query->where('created_by', $request->user()->id);
+        $results = $query->paginate(min(max((int) $request->get('per_page', 20), 1), 100));
+        return response()->json(['data' => $results->items(), 'meta' => [
+            'total' => $results->total(), 'per_page' => $results->perPage(),
+            'current_page' => $results->currentPage(), 'last_page' => $results->lastPage(),
+        ]]);
+    }
 
-        return response()->json($citizen->fresh());
+    public function importShow(Request $request, CitizenImportBatch $batch): JsonResponse
+    {
+        $this->authorize('view', $batch);
+        return response()->json($batch->loadCount([
+            'rows as pending_rows' => fn ($q) => $q->where('status', 'pending'),
+            'rows as rejected_rows' => fn ($q) => $q->where('status', 'rejected'),
+        ]));
+    }
+
+    public function importErrors(Request $request, CitizenImportBatch $batch): StreamedResponse
+    {
+        $this->authorize('view', $batch);
+        return response()->streamDownload(function () use ($batch): void {
+            $handle = fopen('php://output', 'wb');
+            fputcsv($handle, ['Row', 'Status', 'Errors', 'Payload']);
+            $batch->rows()->where('status', 'rejected')->orderBy('row_number')->chunk(500, function ($rows) use ($handle): void {
+                foreach ($rows as $row) fputcsv($handle, [$row->row_number, $row->status, json_encode($row->errors), json_encode($row->payload)]);
+            });
+            fclose($handle);
+        }, "citizen-import-errors-{$batch->id}.csv", ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function stats(Request $request): JsonResponse
@@ -246,6 +322,51 @@ class CitizenController extends Controller
             foreach ($data['occupation_breakdown'] as $row) fputcsv($handle, [$row['label'], $row['count']]);
             fclose($handle);
         }, 'constituency-census-'.now()->format('Y-m-d-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function exportDirectory(Request $request): StreamedResponse
+    {
+        $this->authorize('viewAny', Citizen::class);
+        $query = Citizen::with(['addresses' => fn ($addresses) => $addresses->where('is_primary', true)->with('village:id,name')]);
+        app(GeographicScopeService::class)->apply($query, $request->user());
+        if ($search = trim((string) $request->get('search'))) {
+            $query->where(fn ($q) => $q->where('first_name', 'ilike', "%{$search}%")
+                ->orWhere('last_name', 'ilike', "%{$search}%")
+                ->orWhere('mobile_number', 'ilike', "%{$search}%")
+                ->orWhere('unique_id', 'ilike', "%{$search}%")
+                ->orWhere('voter_id', 'ilike', "%{$search}%"));
+        }
+        if ($gender = $request->get('gender')) $query->where('gender', $gender);
+        if ($request->filled('is_voter')) $query->where('is_voter', filter_var($request->get('is_voter'), FILTER_VALIDATE_BOOLEAN));
+        if ($ageGroup = $request->get('age_group')) {
+            match ($ageGroup) {
+                'child' => $query->where('date_of_birth', '>', now()->subYears(18)->toDateString()),
+                'adult' => $query->whereBetween('date_of_birth', [now()->subYears(60)->toDateString(), now()->subYears(18)->toDateString()]),
+                'senior' => $query->where('date_of_birth', '<', now()->subYears(60)->toDateString()),
+                default => null,
+            };
+        }
+        return response()->streamDownload(function () use ($query): void {
+            $handle = fopen('php://output', 'wb');
+            fputcsv($handle, ['Citizen ID', 'Name', 'DOB', 'Gender', 'Mobile', 'Voter ID', 'Aadhaar', 'Village', 'Occupation', 'Education']);
+            $query->orderBy('id')->chunkById(1000, function ($citizens) use ($handle): void {
+                foreach ($citizens as $citizen) {
+                    fputcsv($handle, [
+                        $citizen->unique_id,
+                        trim("{$citizen->first_name} {$citizen->middle_name} {$citizen->last_name}"),
+                        $citizen->date_of_birth?->toDateString(),
+                        $citizen->gender,
+                        $citizen->mobile_number,
+                        $citizen->voter_id,
+                        $citizen->aadhaar_masked,
+                        $citizen->addresses->first()?->village?->name,
+                        $citizen->occupation,
+                        $citizen->education,
+                    ]);
+                }
+            });
+            fclose($handle);
+        }, 'citizen-directory-'.now()->format('Y-m-d-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     private function censusData(Request $request): array

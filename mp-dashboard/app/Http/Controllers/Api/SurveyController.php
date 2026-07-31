@@ -11,6 +11,7 @@ use App\Services\GeographicScopeService;
 use App\Http\Requests\Survey\SaveSurveyRequest;
 use App\Http\Requests\Survey\SubmitSurveyResponseRequest;
 use App\Http\Requests\Survey\AssignSurveyRequest;
+use App\Http\Resources\SurveyResource;
 use App\Models\ActivityLog;
 use App\Models\SurveyAssignment;
 use App\Models\SurveyQuestion;
@@ -85,13 +86,13 @@ class SurveyController extends Controller
         ]);
     }
 
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
-        $survey = Survey::with(['questions', 'constituency'])->findOrFail($id);
+        $survey = Survey::with(['questions', 'constituency', 'lifecycleLogs.user.role'])->findOrFail($id);
         $this->authorize('view', $survey);
         $survey->response_count = SurveyResponse::where('survey_id', $id)->count();
 
-        return response()->json($survey);
+        return response()->json((new SurveyResource($survey))->resolve($request));
     }
 
     public function responses(Request $request): JsonResponse

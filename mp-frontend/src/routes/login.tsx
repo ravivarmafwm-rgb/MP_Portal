@@ -26,6 +26,8 @@ function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthenticated, user, isLoading } = useAuth();
   const [showPass, setShowPass] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
 
   // Already logged in → go to role dashboard
   useEffect(() => {
@@ -42,7 +44,11 @@ function LoginPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const authUser = await login(data.email, data.password);
+      const authUser = await login(
+        data.email,
+        data.password,
+        mfaRequired ? mfaCode : undefined,
+      );
       toast.success("Welcome back!");
       navigate({ to: getDashboardPath(authUser.role_slug), replace: true });
     } catch (err: unknown) {
@@ -54,6 +60,9 @@ function LoginPage() {
             "Cannot connect to the API. Check your connection or API configuration.";
         } else if (status === 401) {
           msg = "Invalid email or password.";
+        } else if (status === 428 && err.response.data?.mfa_required) {
+          setMfaRequired(true);
+          msg = "Enter the six-digit code from your authenticator app.";
         } else if (status === 422) {
           msg =
             err.response.data?.message ?? "Please check the submitted details.";
@@ -200,6 +209,23 @@ function LoginPage() {
                 <p className="text-xs text-destructive">
                   {errors.password.message}
                 </p>
+              )}
+              {mfaRequired && (
+                <div className="space-y-2">
+                  <Label htmlFor="mfa-code">Authenticator code</Label>
+                  <Input
+                    id="mfa-code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={mfaCode}
+                    onChange={(e) =>
+                      setMfaCode(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="123456"
+                    required
+                  />
+                </div>
               )}
             </div>
 

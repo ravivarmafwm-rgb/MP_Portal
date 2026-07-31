@@ -52,9 +52,9 @@ const schema = z.object({
   blood_group: z.string().optional(),
   house_number: z.string().optional(),
   street: z.string().optional(),
-  pincode: z.string().optional(),
-  district: z.string().optional(),
-  state: z.string().optional(),
+  pincode: z.string().regex(/^[0-9]{6}$/, "Enter a valid 6-digit pincode"),
+  district: z.string().min(1, "District required"),
+  state: z.string().min(1, "State required"),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -111,6 +111,10 @@ function CreateCitizenPage() {
   });
 
   const onSubmit = async (data: FormData) => {
+    if (!villageId) {
+      toast.error("Select the citizen's village.");
+      return;
+    }
     try {
       const result = await createCitizen({
         ...data,
@@ -118,6 +122,8 @@ function CreateCitizenPage() {
         ward_id: wardId || undefined,
         polling_booth_id: boothId || undefined,
         family_id: familyId || undefined,
+        relationship_with_head: familyId ? "Member" : undefined,
+        is_voter: Boolean(data.voter_id),
       });
 
       const uploads: Promise<unknown>[] = [];

@@ -11,6 +11,7 @@ import {
   Loader2,
   Lock,
   Mail,
+  Phone,
   User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,8 +25,14 @@ export const Route = createFileRoute("/register")({ component: RegisterPage });
 
 const schema = z
   .object({
-    name: z.string().trim().min(2, "Enter your full name").max(255),
+    first_name: z.string().trim().min(1, "Enter your first name").max(100),
+    last_name: z.string().trim().min(1, "Enter your last name").max(100),
     email: z.string().trim().email("Enter a valid email address").max(255),
+    mobile_number: z
+      .string()
+      .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian mobile number"),
+    date_of_birth: z.string().min(1, "Enter your date of birth"),
+    gender: z.enum(["Male", "Female", "Other"]),
     password: z
       .string()
       .min(12, "Use at least 12 characters")
@@ -64,12 +71,7 @@ function RegisterPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const authUser = await createAccount(
-        data.name,
-        data.email,
-        data.password,
-        data.password_confirmation,
-      );
+      const authUser = await createAccount(data);
       toast.success("Citizen account created successfully");
       await navigate({
         to: getDashboardPath(authUser.role_slug),
@@ -145,14 +147,24 @@ function RegisterPage() {
             Enter your details to access citizen services.
           </p>
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
-            <Field label="Full name" error={errors.name?.message}>
-              <User className="field-icon" />
-              <Input
-                autoComplete="name"
-                className="pl-10"
-                {...register("name")}
-              />
-            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="First name" error={errors.first_name?.message}>
+                <User className="field-icon" />
+                <Input
+                  autoComplete="given-name"
+                  className="pl-10"
+                  {...register("first_name")}
+                />
+              </Field>
+              <Field label="Last name" error={errors.last_name?.message}>
+                <User className="field-icon" />
+                <Input
+                  autoComplete="family-name"
+                  className="pl-10"
+                  {...register("last_name")}
+                />
+              </Field>
+            </div>
             <Field label="Email address" error={errors.email?.message}>
               <Mail className="field-icon" />
               <Input
@@ -162,6 +174,42 @@ function RegisterPage() {
                 {...register("email")}
               />
             </Field>
+            <Field label="Mobile number" error={errors.mobile_number?.message}>
+              <Phone className="field-icon" />
+              <Input
+                inputMode="numeric"
+                autoComplete="tel"
+                maxLength={10}
+                className="pl-10"
+                {...register("mobile_number")}
+              />
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Date of birth"
+                error={errors.date_of_birth?.message}
+              >
+                <Input
+                  type="date"
+                  max={new Date().toISOString().slice(0, 10)}
+                  {...register("date_of_birth")}
+                />
+              </Field>
+              <Field label="Gender" error={errors.gender?.message}>
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  defaultValue=""
+                  {...register("gender")}
+                >
+                  <option value="" disabled>
+                    Select
+                  </option>
+                  <option value="Female">Female</option>
+                  <option value="Male">Male</option>
+                  <option value="Other">Other</option>
+                </select>
+              </Field>
+            </div>
             <Field label="Password" error={errors.password?.message}>
               <Lock className="field-icon" />
               <Input

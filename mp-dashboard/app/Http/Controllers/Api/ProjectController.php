@@ -26,13 +26,16 @@ use App\Http\Requests\Project\UploadProjectPhotoRequest;
 use App\Models\ProjectPhoto;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Http\Requests\Project\SaveProjectWorkflowEntryRequest;
+use App\Http\Resources\ProjectWorkflowEntryResource;
+use App\Models\ProjectWorkflowEntry;
 
 class ProjectController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Project::class);
-        $query = Project::with(['constituency', 'village', 'contractor']);
+        $query = Project::with(['constituency', 'village', 'contractor','projectCategory','projectType','department','agency']);
         app(GeographicScopeService::class)->apply($query, $request->user());
 
         if ($search = $request->get('search')) {
@@ -49,7 +52,7 @@ class ProjectController extends Controller
         $results = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json([
-            'data' => $results->items(),
+            'data' => ProjectResource::collection($results->getCollection())->resolve(),
             'meta' => [
                 'total' => $results->total(),
                 'per_page' => $results->perPage(),
@@ -62,12 +65,12 @@ class ProjectController extends Controller
     public function show(string $id): JsonResponse
     {
         $project = Project::with([
-            'constituency', 'village', 'mandal', 'contractor',
+            'constituency', 'village', 'mandal', 'contractor','projectCategory','projectType','department','agency',
             'milestones', 'updates', 'budgets', 'photos',
         ])->findOrFail($id);
         $this->authorize('view', $project);
 
-        return response()->json($project);
+        return response()->json(ProjectResource::make($project)->resolve());
     }
 
     public function stats(Request $request): JsonResponse
@@ -83,11 +86,60 @@ class ProjectController extends Controller
         ]);
     }
 
+    public function budgetSummary(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Project::class); $projects = Project::query(); app(GeographicScopeService::class)->apply($projects, $request->user());
+        $ids = $projects->pluck('id'); $budgets = ProjectBudget::whereIn('project_id',$ids); $workflow = ProjectWorkflowEntry::whereIn('project_id',$ids);
+        $allocated=(float)(clone $budgets)->sum(DB::raw('COALESCE(revised_amount,allocated_amount)')); $utilized=(float)(clone $budgets)->sum('utilized_amount'); $released=(float)(clone $workflow)->where('entry_type','fund_release')->whereIn('status',['approved','completed'])->sum('amount'); $expenditure=(float)(clone $workflow)->where('entry_type','expenditure')->whereIn('status',['approved','completed'])->sum('amount');
+        return response()->json(['allocated'=>$allocated,'utilized'=>$utilized,'released'=>$released,'expenditure'=>$expenditure,'balance'=>$allocated-$utilized,'release_balance'=>$released-$expenditure,'budget_heads'=>(clone $budgets)->count(),'projects'=>(clone $projects)->count()]);
+    }
+
+    public function allocationHistory(Request $request, string $project): JsonResponse
+    { $owner=Project::findOrFail($project);$this->authorize('view',$owner);$logs=ActivityLog::where('loggable_type',Project::class)->where('loggable_id',$owner->id)->whereIn('action',['budget_created','budget_updated','budget_deleted','progress_updated','workflow_entry_created','workflow_entry_updated'])->latest()->paginate(min(max((int)$request->get('per_page',20),1),100));return response()->json(['data'=>$logs->items(),'meta'=>['total'=>$logs->total(),'per_page'=>$logs->perPage(),'current_page'=>$logs->currentPage(),'last_page'=>$logs->lastPage()]]); }
+
+    public function exportBudget(Request $request): StreamedResponse
+    { $this->authorize('viewAny',Project::class);$q=ProjectBudget::with('project:id,project_number,name');$projects=Project::query();app(GeographicScopeService::class)->apply($projects,$request->user());$q->whereIn('project_id',$projects->select('id'));$rows=$q->get();return response()->streamDownload(function()use($rows){$out=fopen('php://output','w');fputcsv($out,['Project Number','Project','Budget Head','Allocated','Revised','Utilized','Balance','Status']);foreach($rows as $b)fputcsv($out,[$b->project?->project_number,$b->project?->name,$b->budget_head,$b->allocated_amount,$b->revised_amount,$b->utilized_amount,$b->balance_amount,$b->status]);fclose($out);},'mplads-budget-'.now()->format('Ymd-His').'.csv',['Content-Type'=>'text/csv']); }
+
+    public function exportFinancial(Request $request): StreamedResponse
+    { $this->authorize('viewAny',Project::class);$q=Project::query();app(GeographicScopeService::class)->apply($q,$request->user());$rows=$q->withSum('budgets','utilized_amount')->get();return response()->streamDownload(function()use($rows){$out=fopen('php://output','w');fputcsv($out,['Project Number','Project','Sanctioned','Expenditure','Progress %','Status']);foreach($rows as $p)fputcsv($out,[$p->project_number,$p->name,$p->sanctioned_amount,$p->expenditure,$p->progress_percentage,$p->status]);fclose($out);},'project-financial-report-'.now()->format('Ymd-His').'.csv',['Content-Type'=>'text/csv']); }
+
+    public function workflow(Request $request, string $project): JsonResponse
+    {
+        $owner = Project::findOrFail($project);
+        $this->authorize('view', $owner);
+        $query = $owner->workflowEntries()->latest('entry_date')->latest('created_at');
+        if ($type = $request->get('entry_type')) $query->where('entry_type', $type);
+        if ($status = $request->get('status')) $query->where('status', $status);
+        if ($search = trim((string) $request->get('search'))) $query->where(fn($q) => $q->where('title','ilike',"%{$search}%")->orWhere('reference_number','ilike',"%{$search}%"));
+        $page = $query->paginate(min(max((int) $request->get('per_page', 20), 1), 100));
+        return response()->json(['data'=>ProjectWorkflowEntryResource::collection($page->getCollection())->resolve(), 'meta'=>['total'=>$page->total(),'per_page'=>$page->perPage(),'current_page'=>$page->currentPage(),'last_page'=>$page->lastPage()]]);
+    }
+
+    public function storeWorkflow(SaveProjectWorkflowEntryRequest $request, string $project): JsonResponse
+    {
+        $owner = Project::findOrFail($project); $this->authorize('update', $owner); $data = $request->validated();
+        $entry = DB::transaction(function () use ($owner, $data, $request) { $entry = $owner->workflowEntries()->create($data + ['created_by'=>$request->user()->id]); $this->audit($request,$owner,'workflow_entry_created',null,$entry->getAttributes()); return $entry; });
+        return response()->json(ProjectWorkflowEntryResource::make($entry)->resolve(), 201);
+    }
+
+    public function updateWorkflow(SaveProjectWorkflowEntryRequest $request, string $project, string $entry): JsonResponse
+    {
+        $owner = Project::findOrFail($project); $this->authorize('update', $owner); $row = $owner->workflowEntries()->findOrFail($entry); $old = $row->getAttributes();
+        DB::transaction(function () use ($row,$request,$owner,$old) { $row->update($request->validated()+['updated_by'=>$request->user()->id]); $this->audit($request,$owner,'workflow_entry_updated',$old,$row->fresh()->getAttributes()); });
+        return response()->json(ProjectWorkflowEntryResource::make($row->fresh())->resolve());
+    }
+
+    public function destroyWorkflow(Request $request, string $project, string $entry): JsonResponse
+    {
+        $owner = Project::findOrFail($project); $this->authorize('update', $owner); $row = $owner->workflowEntries()->findOrFail($entry); abort_if($row->status === 'completed', 409, 'Completed workflow entries cannot be deleted.'); $old = $row->getAttributes();
+        DB::transaction(function () use ($row,$request,$owner,$old) { $row->delete(); $this->audit($request,$owner,'workflow_entry_deleted',$old,null); }); return response()->json(['message'=>'Workflow entry deleted.']);
+    }
+
     public function store(StoreProjectRequest $request): JsonResponse
     {
         $data=$this->normalizeLocation($request->validated());abort_unless(app(GeographicScopeService::class)->allowsVillage($request->user(),$data['village_id'],$data['ward_id']??null),403,'The selected project location is outside your assigned area.');
         $project=DB::transaction(function()use($data,$request){$project=Project::create([...$data,'project_number'=>'PRJ-'.now()->format('Y').'-'.strtoupper(Str::random(10)),'status'=>$data['status']??'proposed','created_by'=>$request->user()->id]);$this->audit($request,$project,'created',null,$project->getAttributes());return $project;});
-        return response()->json(ProjectResource::make($project->load(['constituency','assemblyConstituency','mandal','village','ward','contractor']))->resolve(),201);
+        return response()->json(ProjectResource::make($project->load(['constituency','assemblyConstituency','mandal','village','ward','contractor','projectCategory','projectType','department','agency']))->resolve(),201);
     }
 
     public function update(UpdateProjectRequest $request,string $id):JsonResponse
@@ -96,7 +148,7 @@ class ProjectController extends Controller
         abort_unless(app(GeographicScopeService::class)->allowsVillage($request->user(),$village,$ward),403,'The selected project location is outside your assigned area.');
         if(isset($data['expenditure']))abort_if((float)$data['expenditure']>(float)($data['sanctioned_amount']??$project->sanctioned_amount??$project->estimated_cost),422,'Expenditure cannot exceed the sanctioned project amount.');
         $old=$project->getAttributes();DB::transaction(function()use($project,$data,$request,$old){$project->update([...$data,'updated_by'=>$request->user()->id]);$this->audit($request,$project,'updated',$old,$project->fresh()->getAttributes());});
-        return response()->json(ProjectResource::make($project->fresh()->load(['constituency','assemblyConstituency','mandal','village','ward','contractor']))->resolve());
+        return response()->json(ProjectResource::make($project->fresh()->load(['constituency','assemblyConstituency','mandal','village','ward','contractor','projectCategory','projectType','department','agency']))->resolve());
     }
 
     public function destroy(Request $request,string $id):JsonResponse

@@ -78,6 +78,7 @@ export const navSections: NavSection[] = [
       { title: "Development Projects", url: "/projects/development" },
       { title: "Project 360", url: "/projects/project-detail" },
       { title: "Contractors", url: "/projects/contractors" },
+      { title: "Lookup Administration", url: "/projects/lookups" },
       { title: "Progress Tracker", url: "/projects/progress-tracker" },
       { title: "Budget Monitoring", url: "/projects/budget-monitoring" },
       { title: "Analytics", url: "/projects/analytics" },

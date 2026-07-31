@@ -44,6 +44,7 @@ import { Route as AppDocumentsIndexRouteImport } from './routes/_app.documents.i
 import { Route as AppCommunicationIndexRouteImport } from './routes/_app.communication.index'
 import { Route as AppCitizensIndexRouteImport } from './routes/_app.citizens.index'
 import { Route as AppAnalyticsIndexRouteImport } from './routes/_app.analytics.index'
+import { Route as AppVolunteersVisitsRouteImport } from './routes/_app.volunteers.visits'
 import { Route as AppVolunteersTrainingRouteImport } from './routes/_app.volunteers.training'
 import { Route as AppVolunteersProfileRouteImport } from './routes/_app.volunteers.profile'
 import { Route as AppVolunteersPerformanceRouteImport } from './routes/_app.volunteers.performance'
@@ -74,6 +75,7 @@ import { Route as AppProjectsProjectFormRouteImport } from './routes/_app.projec
 import { Route as AppProjectsProjectDetailRouteImport } from './routes/_app.projects.project-detail'
 import { Route as AppProjectsProgressTrackerRouteImport } from './routes/_app.projects.progress-tracker'
 import { Route as AppProjectsMpladsRouteImport } from './routes/_app.projects.mplads'
+import { Route as AppProjectsLookupsRouteImport } from './routes/_app.projects.lookups'
 import { Route as AppProjectsDevelopmentRouteImport } from './routes/_app.projects.development'
 import { Route as AppProjectsDashboardRouteImport } from './routes/_app.projects.dashboard'
 import { Route as AppProjectsContractorsRouteImport } from './routes/_app.projects.contractors'
@@ -116,6 +118,7 @@ import { Route as AppAnalyticsMandalRouteImport } from './routes/_app.analytics.
 import { Route as AppAnalyticsConstituencyRouteImport } from './routes/_app.analytics.constituency'
 import { Route as AppAnalyticsBoothRouteImport } from './routes/_app.analytics.booth'
 import { Route as AppAnalyticsAssemblyRouteImport } from './routes/_app.analytics.assembly'
+import { Route as AppVolunteersVisitsIdRouteImport } from './routes/_app.volunteers.visits.$id'
 
 const VolunteerApplyRoute = VolunteerApplyRouteImport.update({
   id: '/volunteer-apply',
@@ -291,6 +294,11 @@ const AppAnalyticsIndexRoute = AppAnalyticsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppAnalyticsRoute,
 } as any)
+const AppVolunteersVisitsRoute = AppVolunteersVisitsRouteImport.update({
+  id: '/visits',
+  path: '/visits',
+  getParentRoute: () => AppVolunteersRoute,
+} as any)
 const AppVolunteersTrainingRoute = AppVolunteersTrainingRouteImport.update({
   id: '/training',
   path: '/training',
@@ -447,6 +455,11 @@ const AppProjectsProgressTrackerRoute =
 const AppProjectsMpladsRoute = AppProjectsMpladsRouteImport.update({
   id: '/mplads',
   path: '/mplads',
+  getParentRoute: () => AppProjectsRoute,
+} as any)
+const AppProjectsLookupsRoute = AppProjectsLookupsRouteImport.update({
+  id: '/lookups',
+  path: '/lookups',
   getParentRoute: () => AppProjectsRoute,
 } as any)
 const AppProjectsDevelopmentRoute = AppProjectsDevelopmentRouteImport.update({
@@ -671,6 +684,11 @@ const AppAnalyticsAssemblyRoute = AppAnalyticsAssemblyRouteImport.update({
   path: '/assembly',
   getParentRoute: () => AppAnalyticsRoute,
 } as any)
+const AppVolunteersVisitsIdRoute = AppVolunteersVisitsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppVolunteersVisitsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -739,6 +757,7 @@ export interface FileRoutesByFullPath {
   '/projects/contractors': typeof AppProjectsContractorsRoute
   '/projects/dashboard': typeof AppProjectsDashboardRoute
   '/projects/development': typeof AppProjectsDevelopmentRoute
+  '/projects/lookups': typeof AppProjectsLookupsRoute
   '/projects/mplads': typeof AppProjectsMpladsRoute
   '/projects/progress-tracker': typeof AppProjectsProgressTrackerRoute
   '/projects/project-detail': typeof AppProjectsProjectDetailRoute
@@ -769,6 +788,7 @@ export interface FileRoutesByFullPath {
   '/volunteers/performance': typeof AppVolunteersPerformanceRoute
   '/volunteers/profile': typeof AppVolunteersProfileRoute
   '/volunteers/training': typeof AppVolunteersTrainingRoute
+  '/volunteers/visits': typeof AppVolunteersVisitsRouteWithChildren
   '/analytics/': typeof AppAnalyticsIndexRoute
   '/citizens/': typeof AppCitizensIndexRoute
   '/communication/': typeof AppCommunicationIndexRoute
@@ -779,6 +799,7 @@ export interface FileRoutesByFullPath {
   '/schemes/': typeof AppSchemesIndexRoute
   '/surveys/': typeof AppSurveysIndexRoute
   '/volunteers/': typeof AppVolunteersIndexRoute
+  '/volunteers/visits/$id': typeof AppVolunteersVisitsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -837,6 +858,7 @@ export interface FileRoutesByTo {
   '/projects/contractors': typeof AppProjectsContractorsRoute
   '/projects/dashboard': typeof AppProjectsDashboardRoute
   '/projects/development': typeof AppProjectsDevelopmentRoute
+  '/projects/lookups': typeof AppProjectsLookupsRoute
   '/projects/mplads': typeof AppProjectsMpladsRoute
   '/projects/progress-tracker': typeof AppProjectsProgressTrackerRoute
   '/projects/project-detail': typeof AppProjectsProjectDetailRoute
@@ -867,6 +889,7 @@ export interface FileRoutesByTo {
   '/volunteers/performance': typeof AppVolunteersPerformanceRoute
   '/volunteers/profile': typeof AppVolunteersProfileRoute
   '/volunteers/training': typeof AppVolunteersTrainingRoute
+  '/volunteers/visits': typeof AppVolunteersVisitsRouteWithChildren
   '/analytics': typeof AppAnalyticsIndexRoute
   '/citizens': typeof AppCitizensIndexRoute
   '/communication': typeof AppCommunicationIndexRoute
@@ -877,6 +900,7 @@ export interface FileRoutesByTo {
   '/schemes': typeof AppSchemesIndexRoute
   '/surveys': typeof AppSurveysIndexRoute
   '/volunteers': typeof AppVolunteersIndexRoute
+  '/volunteers/visits/$id': typeof AppVolunteersVisitsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -947,6 +971,7 @@ export interface FileRoutesById {
   '/_app/projects/contractors': typeof AppProjectsContractorsRoute
   '/_app/projects/dashboard': typeof AppProjectsDashboardRoute
   '/_app/projects/development': typeof AppProjectsDevelopmentRoute
+  '/_app/projects/lookups': typeof AppProjectsLookupsRoute
   '/_app/projects/mplads': typeof AppProjectsMpladsRoute
   '/_app/projects/progress-tracker': typeof AppProjectsProgressTrackerRoute
   '/_app/projects/project-detail': typeof AppProjectsProjectDetailRoute
@@ -977,6 +1002,7 @@ export interface FileRoutesById {
   '/_app/volunteers/performance': typeof AppVolunteersPerformanceRoute
   '/_app/volunteers/profile': typeof AppVolunteersProfileRoute
   '/_app/volunteers/training': typeof AppVolunteersTrainingRoute
+  '/_app/volunteers/visits': typeof AppVolunteersVisitsRouteWithChildren
   '/_app/analytics/': typeof AppAnalyticsIndexRoute
   '/_app/citizens/': typeof AppCitizensIndexRoute
   '/_app/communication/': typeof AppCommunicationIndexRoute
@@ -987,6 +1013,7 @@ export interface FileRoutesById {
   '/_app/schemes/': typeof AppSchemesIndexRoute
   '/_app/surveys/': typeof AppSurveysIndexRoute
   '/_app/volunteers/': typeof AppVolunteersIndexRoute
+  '/_app/volunteers/visits/$id': typeof AppVolunteersVisitsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1057,6 +1084,7 @@ export interface FileRouteTypes {
     | '/projects/contractors'
     | '/projects/dashboard'
     | '/projects/development'
+    | '/projects/lookups'
     | '/projects/mplads'
     | '/projects/progress-tracker'
     | '/projects/project-detail'
@@ -1087,6 +1115,7 @@ export interface FileRouteTypes {
     | '/volunteers/performance'
     | '/volunteers/profile'
     | '/volunteers/training'
+    | '/volunteers/visits'
     | '/analytics/'
     | '/citizens/'
     | '/communication/'
@@ -1097,6 +1126,7 @@ export interface FileRouteTypes {
     | '/schemes/'
     | '/surveys/'
     | '/volunteers/'
+    | '/volunteers/visits/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1155,6 +1185,7 @@ export interface FileRouteTypes {
     | '/projects/contractors'
     | '/projects/dashboard'
     | '/projects/development'
+    | '/projects/lookups'
     | '/projects/mplads'
     | '/projects/progress-tracker'
     | '/projects/project-detail'
@@ -1185,6 +1216,7 @@ export interface FileRouteTypes {
     | '/volunteers/performance'
     | '/volunteers/profile'
     | '/volunteers/training'
+    | '/volunteers/visits'
     | '/analytics'
     | '/citizens'
     | '/communication'
@@ -1195,6 +1227,7 @@ export interface FileRouteTypes {
     | '/schemes'
     | '/surveys'
     | '/volunteers'
+    | '/volunteers/visits/$id'
   id:
     | '__root__'
     | '/'
@@ -1264,6 +1297,7 @@ export interface FileRouteTypes {
     | '/_app/projects/contractors'
     | '/_app/projects/dashboard'
     | '/_app/projects/development'
+    | '/_app/projects/lookups'
     | '/_app/projects/mplads'
     | '/_app/projects/progress-tracker'
     | '/_app/projects/project-detail'
@@ -1294,6 +1328,7 @@ export interface FileRouteTypes {
     | '/_app/volunteers/performance'
     | '/_app/volunteers/profile'
     | '/_app/volunteers/training'
+    | '/_app/volunteers/visits'
     | '/_app/analytics/'
     | '/_app/citizens/'
     | '/_app/communication/'
@@ -1304,6 +1339,7 @@ export interface FileRouteTypes {
     | '/_app/schemes/'
     | '/_app/surveys/'
     | '/_app/volunteers/'
+    | '/_app/volunteers/visits/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1561,6 +1597,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsIndexRouteImport
       parentRoute: typeof AppAnalyticsRoute
     }
+    '/_app/volunteers/visits': {
+      id: '/_app/volunteers/visits'
+      path: '/visits'
+      fullPath: '/volunteers/visits'
+      preLoaderRoute: typeof AppVolunteersVisitsRouteImport
+      parentRoute: typeof AppVolunteersRoute
+    }
     '/_app/volunteers/training': {
       id: '/_app/volunteers/training'
       path: '/training'
@@ -1769,6 +1812,13 @@ declare module '@tanstack/react-router' {
       path: '/mplads'
       fullPath: '/projects/mplads'
       preLoaderRoute: typeof AppProjectsMpladsRouteImport
+      parentRoute: typeof AppProjectsRoute
+    }
+    '/_app/projects/lookups': {
+      id: '/_app/projects/lookups'
+      path: '/lookups'
+      fullPath: '/projects/lookups'
+      preLoaderRoute: typeof AppProjectsLookupsRouteImport
       parentRoute: typeof AppProjectsRoute
     }
     '/_app/projects/development': {
@@ -2065,6 +2115,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsAssemblyRouteImport
       parentRoute: typeof AppAnalyticsRoute
     }
+    '/_app/volunteers/visits/$id': {
+      id: '/_app/volunteers/visits/$id'
+      path: '/$id'
+      fullPath: '/volunteers/visits/$id'
+      preLoaderRoute: typeof AppVolunteersVisitsIdRouteImport
+      parentRoute: typeof AppVolunteersVisitsRoute
+    }
   }
 }
 
@@ -2219,6 +2276,7 @@ interface AppProjectsRouteChildren {
   AppProjectsContractorsRoute: typeof AppProjectsContractorsRoute
   AppProjectsDashboardRoute: typeof AppProjectsDashboardRoute
   AppProjectsDevelopmentRoute: typeof AppProjectsDevelopmentRoute
+  AppProjectsLookupsRoute: typeof AppProjectsLookupsRoute
   AppProjectsMpladsRoute: typeof AppProjectsMpladsRoute
   AppProjectsProgressTrackerRoute: typeof AppProjectsProgressTrackerRoute
   AppProjectsProjectDetailRoute: typeof AppProjectsProjectDetailRoute
@@ -2232,6 +2290,7 @@ const AppProjectsRouteChildren: AppProjectsRouteChildren = {
   AppProjectsContractorsRoute: AppProjectsContractorsRoute,
   AppProjectsDashboardRoute: AppProjectsDashboardRoute,
   AppProjectsDevelopmentRoute: AppProjectsDevelopmentRoute,
+  AppProjectsLookupsRoute: AppProjectsLookupsRoute,
   AppProjectsMpladsRoute: AppProjectsMpladsRoute,
   AppProjectsProgressTrackerRoute: AppProjectsProgressTrackerRoute,
   AppProjectsProjectDetailRoute: AppProjectsProjectDetailRoute,
@@ -2301,6 +2360,17 @@ const AppSurveysRouteWithChildren = AppSurveysRoute._addFileChildren(
   AppSurveysRouteChildren,
 )
 
+interface AppVolunteersVisitsRouteChildren {
+  AppVolunteersVisitsIdRoute: typeof AppVolunteersVisitsIdRoute
+}
+
+const AppVolunteersVisitsRouteChildren: AppVolunteersVisitsRouteChildren = {
+  AppVolunteersVisitsIdRoute: AppVolunteersVisitsIdRoute,
+}
+
+const AppVolunteersVisitsRouteWithChildren =
+  AppVolunteersVisitsRoute._addFileChildren(AppVolunteersVisitsRouteChildren)
+
 interface AppVolunteersRouteChildren {
   AppVolunteersActivityRoute: typeof AppVolunteersActivityRoute
   AppVolunteersApplicationsRoute: typeof AppVolunteersApplicationsRoute
@@ -2311,6 +2381,7 @@ interface AppVolunteersRouteChildren {
   AppVolunteersPerformanceRoute: typeof AppVolunteersPerformanceRoute
   AppVolunteersProfileRoute: typeof AppVolunteersProfileRoute
   AppVolunteersTrainingRoute: typeof AppVolunteersTrainingRoute
+  AppVolunteersVisitsRoute: typeof AppVolunteersVisitsRouteWithChildren
   AppVolunteersIndexRoute: typeof AppVolunteersIndexRoute
 }
 
@@ -2324,6 +2395,7 @@ const AppVolunteersRouteChildren: AppVolunteersRouteChildren = {
   AppVolunteersPerformanceRoute: AppVolunteersPerformanceRoute,
   AppVolunteersProfileRoute: AppVolunteersProfileRoute,
   AppVolunteersTrainingRoute: AppVolunteersTrainingRoute,
+  AppVolunteersVisitsRoute: AppVolunteersVisitsRouteWithChildren,
   AppVolunteersIndexRoute: AppVolunteersIndexRoute,
 }
 

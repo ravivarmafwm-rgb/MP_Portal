@@ -69,15 +69,30 @@ function ApplicationsPage() {
         description="Search and review recorded welfare applications."
       />
       <div className="space-y-5 p-4 md:p-8">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {metrics.map(([label, value, Icon]) => (
-            <Card key={label} className="p-4">
-              <Icon className="h-5 w-5 text-primary" />
-              <div className="mt-3 text-xs text-muted-foreground">{label}</div>
-              <div className="text-2xl font-bold">{value.toLocaleString()}</div>
-            </Card>
-          ))}
-        </div>
+        {stats.isError && (
+          <State text="Application statistics could not be loaded." />
+        )}
+        {stats.isLoading ? (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-28" />
+            ))}
+          </div>
+        ) : stats.data ? (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {metrics.map(([label, value, Icon]) => (
+              <Card key={label} className="p-4">
+                <Icon className="h-5 w-5 text-primary" />
+                <div className="mt-3 text-xs text-muted-foreground">
+                  {label}
+                </div>
+                <div className="text-2xl font-bold">
+                  {value.toLocaleString()}
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : null}
         <Card className="space-y-3 p-4">
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />

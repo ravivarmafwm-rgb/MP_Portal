@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
         // ── Step 1: Roles & reference data ───────────────────────────────────
         $this->call([
             RoleSeeder::class,
+            PermissionSeeder::class,
             DepartmentSeeder::class,
             GrievanceCategorySeeder::class,
             SchemeSeeder::class,

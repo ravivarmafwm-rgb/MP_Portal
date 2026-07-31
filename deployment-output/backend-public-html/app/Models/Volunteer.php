@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\Crypt;
 
 class Volunteer extends Model
 {
@@ -27,6 +28,8 @@ class Volunteer extends Model
         'alternate_mobile',
         'email',
         'aadhaar_number',
+        'aadhaar_ciphertext',
+        'aadhaar_hash',
         'village_id',
         'ward_id',
         'polling_booth_id',
@@ -57,6 +60,29 @@ class Volunteer extends Model
         'total_hours' => 'decimal:2',
         'performance_score' => 'decimal:2',
     ];
+
+    protected $hidden = ['aadhaar_number', 'aadhaar_ciphertext', 'aadhaar_hash'];
+    protected $appends = ['aadhaar_masked'];
+
+    public function setAadhaarNumberAttribute(?string $value): void
+    {
+        $digits = preg_replace('/\D/', '', (string) $value);
+        $this->attributes['aadhaar_number'] = null;
+        $this->attributes['aadhaar_ciphertext'] = $digits !== '' ? Crypt::encryptString($digits) : null;
+        $this->attributes['aadhaar_hash'] = $digits !== '' ? hash_hmac('sha256', $digits, config('app.key')) : null;
+    }
+
+    public function getAadhaarNumberAttribute(): ?string
+    {
+        $ciphertext = $this->attributes['aadhaar_ciphertext'] ?? null;
+        return $ciphertext ? Crypt::decryptString($ciphertext) : null;
+    }
+
+    public function getAadhaarMaskedAttribute(): ?string
+    {
+        $aadhaar = $this->aadhaar_number;
+        return $aadhaar ? 'XXXX XXXX '.substr($aadhaar, -4) : null;
+    }
 
     public function user()
     {

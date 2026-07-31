@@ -11,17 +11,14 @@ class NotificationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        try {
-            $query = Notification::where('user_id', $request->user()->id);
+        $query = Notification::where('user_id', $request->user()->id);
 
-            if ($request->boolean('unread_only')) {
-                $query->where('is_read', false);
-            }
+        if ($request->boolean('unread_only')) $query->where('is_read', false);
 
-            $perPage = min((int) $request->get('per_page', 20), 100);
-            $results = $query->orderByDesc('created_at')->paginate($perPage);
+        $perPage = min(max($request->integer('per_page', 20), 1), 100);
+        $results = $query->orderByDesc('created_at')->paginate($perPage);
 
-            return response()->json([
+        return response()->json([
                 'data' => $results->items(),
                 'meta' => [
                     'total'        => $results->total(),
@@ -29,29 +26,12 @@ class NotificationController extends Controller
                     'current_page' => $results->currentPage(),
                     'last_page'    => $results->lastPage(),
                 ],
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'data' => [],
-                'meta' => [
-                    'total'        => 0,
-                    'per_page'     => 20,
-                    'current_page' => 1,
-                    'last_page'    => 1,
-                ],
-            ]);
-        }
+        ]);
     }
 
     public function unreadCount(Request $request): JsonResponse
     {
-        try {
-            $count = Notification::where('user_id', $request->user()->id)
-                ->where('is_read', false)
-                ->count();
-        } catch (\Exception $e) {
-            $count = 0;
-        }
+        $count = Notification::where('user_id', $request->user()->id)->where('is_read', false)->count();
 
         return response()->json(['count' => $count]);
     }

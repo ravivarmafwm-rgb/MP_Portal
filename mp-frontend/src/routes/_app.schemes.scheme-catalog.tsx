@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertCircle, Building2, Search } from "lucide-react";
+import { AlertCircle, Building2, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchSchemes } from "@/lib/api";
+import {
+  deleteScheme,
+  fetchSchemes,
+  getApiErrorMessage,
+  updateScheme,
+} from "@/lib/api";
+import { SchemeCatalogDialog } from "@/components/schemes/SchemeCatalogDialog";
+import { useAuth } from "@/lib/auth";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/schemes/scheme-catalog")({
   head: () => ({ meta: [{ title: "Scheme Catalog" }] }),
@@ -18,6 +26,32 @@ export const Route = createFileRoute("/_app/schemes/scheme-catalog")({
 function SchemeCatalog() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const { user } = useAuth();
+  const client = useQueryClient();
+  const canManage = [
+    "super-admin",
+    "mp-staff",
+    "constituency-coordinator",
+  ].includes(user?.role_slug ?? "");
+  const activation = useMutation({
+    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+      updateScheme(id, { is_active: active }),
+    onSuccess: async (_, variables) => {
+      toast.success(
+        variables.active ? "Scheme activated." : "Scheme deactivated.",
+      );
+      await client.invalidateQueries({ queryKey: ["schemes"] });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+  const removal = useMutation({
+    mutationFn: deleteScheme,
+    onSuccess: async () => {
+      toast.success("Scheme deleted.");
+      await client.invalidateQueries({ queryKey: ["schemes"] });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
   const query = useQuery({
     queryKey: ["schemes", search, page],
     queryFn: () => fetchSchemes({ search, page, per_page: 12 }),
@@ -27,6 +61,7 @@ function SchemeCatalog() {
       <PageHeader
         title="Scheme Catalog"
         description="Government schemes currently recorded for this constituency."
+        actions={canManage ? <SchemeCatalogDialog /> : undefined}
       />
       <div className="space-y-5 p-4 md:p-8">
         <Card className="p-4">
@@ -111,6 +146,45 @@ function SchemeCatalog() {
                     </dd>
                   </div>
                 </dl>
+                {canManage && (
+                  <div className="mt-5 flex gap-2 border-t pt-4">
+                    <SchemeCatalogDialog scheme={scheme} />
+                    <Button
+                      size="sm"
+                      variant={scheme.is_active ? "destructive" : "outline"}
+                      disabled={activation.isPending}
+                      onClick={() =>
+                        activation.mutate({
+                          id: scheme.id,
+                          active: !scheme.is_active,
+                        })
+                      }
+                    >
+                      {scheme.is_active ? "Deactivate" : "Activate"}
+                    </Button>
+                    {(scheme.applications_count ?? 0) === 0 &&
+                      (scheme.beneficiaries_count ?? 0) === 0 && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={removal.isPending}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Delete ${scheme.name}? This cannot be undone.`,
+                              )
+                            ) {
+                              removal.mutate(scheme.id);
+                            }
+                          }}
+                          aria-label={`Delete ${scheme.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
+                      )}
+                  </div>
+                )}
               </Card>
             ))}
           </div>

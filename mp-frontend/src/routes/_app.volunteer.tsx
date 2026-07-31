@@ -225,6 +225,9 @@ function VolunteerDashboardPage() {
           <Button asChild variant="outline" size="sm">
             <Link to="/volunteers/attendance">Attendance</Link>
           </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/volunteers/visits">Field Visits</Link>
+          </Button>
         </div>
       </div>
     </RoleGuard>

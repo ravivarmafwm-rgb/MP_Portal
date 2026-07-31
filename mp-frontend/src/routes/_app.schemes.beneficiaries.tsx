@@ -42,29 +42,41 @@ function BeneficiariesPage() {
         description="Beneficiary enrollments and recorded benefit distribution."
       />
       <div className="space-y-5 p-4 md:p-8">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Card className="p-5">
-            <Users className="h-5 w-5 text-primary" />
-            <div className="mt-3 text-xs text-muted-foreground">
-              Active beneficiaries
-            </div>
-            <div className="text-2xl font-bold">
-              {(stats.data?.total_beneficiaries ?? 0).toLocaleString()}
-            </div>
-          </Card>
-          <Card className="p-5">
-            <IndianRupee className="h-5 w-5 text-primary" />
-            <div className="mt-3 text-xs text-muted-foreground">
-              Recorded benefits distributed
-            </div>
-            <div className="text-2xl font-bold">
-              ₹
-              {(stats.data?.total_benefit_distributed ?? 0).toLocaleString(
-                "en-IN",
-              )}
-            </div>
-          </Card>
-        </div>
+        {stats.isError && (
+          <div className="py-6 text-center text-destructive">
+            Beneficiary statistics could not be loaded.
+          </div>
+        )}
+        {stats.isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Skeleton className="h-28" />
+            <Skeleton className="h-28" />
+          </div>
+        ) : stats.data ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card className="p-5">
+              <Users className="h-5 w-5 text-primary" />
+              <div className="mt-3 text-xs text-muted-foreground">
+                Active beneficiaries
+              </div>
+              <div className="text-2xl font-bold">
+                {(stats.data?.total_beneficiaries ?? 0).toLocaleString()}
+              </div>
+            </Card>
+            <Card className="p-5">
+              <IndianRupee className="h-5 w-5 text-primary" />
+              <div className="mt-3 text-xs text-muted-foreground">
+                Recorded benefits distributed
+              </div>
+              <div className="text-2xl font-bold">
+                ₹
+                {(stats.data?.total_benefit_distributed ?? 0).toLocaleString(
+                  "en-IN",
+                )}
+              </div>
+            </Card>
+          </div>
+        ) : null}
         <Card className="flex flex-col gap-3 p-4 sm:flex-row">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />

@@ -25,6 +25,7 @@ import {
   fetchLocWards,
   getApiErrorMessage,
   updateProject,
+  fetchProjectLookup,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -34,8 +35,6 @@ export const Route = createFileRoute("/_app/projects/project-form")({
 });
 const initial = {
   name: "",
-  project_type: "MPLADS",
-  category: "Infrastructure",
   description: "",
   estimated_cost: "",
   sanctioned_amount: "",
@@ -48,7 +47,10 @@ const initial = {
   location: "",
   start_date: "",
   scheduled_completion_date: "",
-  department: "",
+  project_category_id: "",
+  project_type_id: "",
+  department_id: "",
+  agency_id: "",
   remarks: "",
 };
 function Page() {
@@ -98,6 +100,22 @@ function Page() {
     queryKey: ["locations", "wards", form.village_id],
     queryFn: () => fetchLocWards(form.village_id),
     enabled: !!form.village_id,
+  });
+  const categories = useQuery({
+    queryKey: ["project-lookup", "category"],
+    queryFn: () => fetchProjectLookup("category"),
+  });
+  const types = useQuery({
+    queryKey: ["project-lookup", "type"],
+    queryFn: () => fetchProjectLookup("type"),
+  });
+  const departments = useQuery({
+    queryKey: ["project-lookup", "department"],
+    queryFn: () => fetchProjectLookup("department"),
+  });
+  const agencies = useQuery({
+    queryKey: ["project-lookup", "agency"],
+    queryFn: () => fetchProjectLookup("agency"),
   });
   const mutation = useMutation({
     mutationFn: () => {
@@ -153,20 +171,18 @@ function Page() {
               onChange={(e) => change("name", e.target.value)}
             />
           </Field>
-          <Field label="Project type">
-            <Input
-              required
-              value={form.project_type}
-              onChange={(e) => change("project_type", e.target.value)}
-            />
-          </Field>
-          <Field label="Category">
-            <Input
-              required
-              value={form.category}
-              onChange={(e) => change("category", e.target.value)}
-            />
-          </Field>
+          <LookupField
+            label="Project type"
+            value={form.project_type_id}
+            rows={types.data?.data}
+            onChange={(v) => change("project_type_id", v)}
+          />
+          <LookupField
+            label="Category"
+            value={form.project_category_id}
+            rows={categories.data?.data}
+            onChange={(v) => change("project_category_id", v)}
+          />
           <Field label="Status">
             <Select
               value={form.status}
@@ -211,6 +227,18 @@ function Page() {
               onChange={(e) => change("sanctioned_amount", e.target.value)}
             />
           </Field>
+          <LookupField
+            label="Department"
+            value={form.department_id}
+            rows={departments.data?.data}
+            onChange={(v) => change("department_id", v)}
+          />
+          <LookupField
+            label="Agency"
+            value={form.agency_id}
+            rows={agencies.data?.data}
+            onChange={(v) => change("agency_id", v)}
+          />
           <Location
             label="Constituency"
             value={form.constituency_id}
@@ -290,12 +318,7 @@ function Page() {
               }
             />
           </Field>
-          <Field label="Department">
-            <Input
-              value={form.department}
-              onChange={(e) => change("department", e.target.value)}
-            />
-          </Field>
+          <div />
           <div />
           <div className="md:col-span-2">
             <Field label="Description">
@@ -360,6 +383,35 @@ function Location({
           {(rows ?? []).map((row) => (
             <SelectItem key={String(row.id)} value={String(row.id)}>
               {String(row.name)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Field>
+  );
+}
+
+function LookupField({
+  label,
+  value,
+  rows,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  rows?: Array<{ id: string; name: string; code: string }>;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Field label={label}>
+      <Select value={value} onValueChange={onChange} required>
+        <SelectTrigger>
+          <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+        </SelectTrigger>
+        <SelectContent>
+          {(rows ?? []).map((row) => (
+            <SelectItem key={row.id} value={row.id}>
+              {row.name} ({row.code})
             </SelectItem>
           ))}
         </SelectContent>

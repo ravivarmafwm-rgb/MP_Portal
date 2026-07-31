@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Citizen extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'unique_id',
@@ -117,6 +118,11 @@ class Citizen extends Model
         return $this->hasMany(SurveyResponse::class);
     }
 
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class);
+    }
+
     public function documents()
     {
         return $this->morphMany(Document::class, 'documentable');
@@ -135,5 +141,10 @@ class Citizen extends Model
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function userAccount()
+    {
+        return $this->hasOne(User::class);
     }
 }

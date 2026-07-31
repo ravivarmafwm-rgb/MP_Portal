@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-C7pTCAcE.js";import{t}from"./message-circle-C5KFtucI.js";import{t as n}from"./PlaceholderPage-C5BN9Mav.js";var r=e(),i=()=>(0,r.jsx)(n,{title:`WhatsApp`,description:`WhatsApp templates, broadcasts and 1:1 conversations.`,icon:t,emptyAction:`New Broadcast`});export{i as component};

@@ -10,8 +10,6 @@ import {
   BarChart3,
   ListChecks,
   CheckCircle2,
-  Clock,
-  Circle,
   ArrowLeft,
   UserPlus,
   Type,
@@ -76,7 +74,12 @@ function SurveyDetail() {
     "constituency-coordinator",
   ].includes(user?.role_slug ?? "");
 
-  const { data: survey, isLoading } = useQuery({
+  const {
+    data: survey,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["survey-detail", surveyId],
     queryFn: () => fetchSurvey(surveyId!),
     enabled: !!surveyId,
@@ -96,13 +99,20 @@ function SurveyDetail() {
     enabled: !!surveyId && canManage,
   });
 
-  if (isLoading || !survey) {
+  if (isLoading) {
     return (
       <div className="p-8 space-y-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-20 w-full" />
         ))}
       </div>
+    );
+  }
+  if (isError || !survey) {
+    return (
+      <Card className="m-8 p-8 text-center text-destructive">
+        {getApiErrorMessage(error)}
+      </Card>
     );
   }
 
@@ -114,37 +124,19 @@ function SurveyDetail() {
       ? Math.min(100, Math.round((responseCount / targetResponses) * 100))
       : 0;
 
-  const lifecycle = [
-    {
-      stage: "Survey Created",
-      date: String(survey.created_at ?? "").substring(0, 10),
-      by: "Admin",
-      status: "done",
-    },
-    {
-      stage: "Published / Active",
-      date: String(survey.start_date ?? "").substring(0, 10),
-      by: "Admin",
-      status: survey.status !== "draft" ? "done" : "pending",
-    },
-    {
-      stage: "Responses Collecting",
-      date: "Ongoing",
-      by: "Field Volunteers",
-      status:
-        survey.status === "active"
-          ? "active"
-          : responseCount > 0
-            ? "done"
-            : "pending",
-    },
-    {
-      stage: "Survey Closed",
-      date: String(survey.end_date ?? "—").substring(0, 10) || "—",
-      by: "Admin",
-      status: survey.status === "closed" ? "done" : "pending",
-    },
-  ];
+  const lifecycle = (survey.lifecycle ?? []).map((event) => ({
+    id: event.id,
+    stage: lifecycleLabel(event.action),
+    date: event.occurred_at
+      ? new Intl.DateTimeFormat("en-IN", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(new Date(event.occurred_at))
+      : "Timestamp unavailable",
+    by: event.actor
+      ? `${event.actor.name}${event.actor.role ? ` (${event.actor.role})` : ""}`
+      : "System or deleted user",
+  }));
 
   return (
     <>
@@ -474,22 +466,15 @@ function SurveyDetail() {
                 <ListChecks className="h-4 w-4 text-primary" /> Survey Lifecycle
               </h4>
               <div className="relative mt-5 ml-3 border-l-2 border-dashed border-border pl-6">
+                {lifecycle.length === 0 && (
+                  <p className="pb-5 text-sm text-muted-foreground">
+                    No persisted lifecycle events are available for this survey.
+                  </p>
+                )}
                 {lifecycle.map((step, i) => {
-                  const Icon =
-                    step.status === "done"
-                      ? CheckCircle2
-                      : step.status === "active"
-                        ? Clock
-                        : Circle;
-                  const tone =
-                    step.status === "done"
-                      ? "bg-success/10 text-success"
-                      : step.status === "active"
-                        ? "bg-primary/10 text-primary"
-                        : "bg-muted text-muted-foreground";
                   return (
                     <motion.div
-                      key={step.stage}
+                      key={step.id}
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.06 }}
@@ -498,10 +483,10 @@ function SurveyDetail() {
                       <div
                         className={cn(
                           "absolute -left-[34px] grid h-7 w-7 place-items-center rounded-full ring-2 ring-background",
-                          tone,
+                          "bg-success/10 text-success",
                         )}
                       >
-                        <Icon className="h-3.5 w-3.5" />
+                        <CheckCircle2 className="h-3.5 w-3.5" />
                       </div>
                       <div className="text-sm font-semibold">{step.stage}</div>
                       <div className="text-[11px] text-muted-foreground">
@@ -591,5 +576,17 @@ function SurveyDetail() {
         onOpenChange={setAssignmentOpen}
       />
     </>
+  );
+}
+
+function lifecycleLabel(action: string) {
+  return (
+    {
+      created: "Survey created",
+      updated: "Survey updated",
+      published: "Survey published",
+      assigned: "Volunteers assigned",
+      closed: "Survey closed",
+    }[action] ?? action.replaceAll("_", " ")
   );
 }

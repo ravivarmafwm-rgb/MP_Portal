@@ -312,16 +312,16 @@ function EngagementAnalyticsPage() {
           </Card>
         )}
 
-        {/* AI Engagement Assistant Preview */}
+        {/* Advanced AI insights are intentionally omitted until a real API is available. */}
         <Card className="p-6 border-2 border-dashed border-border/60">
           <div className="flex items-center gap-3 mb-4">
             <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
               <TrendingUp className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm">AI Engagement Assistant</h3>
+              <h3 className="font-semibold text-sm">Additional analytics</h3>
               <p className="text-xs text-muted-foreground">
-                Coming soon — AI-powered constituency insights
+                No additional analytics are available from the current API.
               </p>
             </div>
           </div>
@@ -342,7 +342,7 @@ function EngagementAnalyticsPage() {
             ))}
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            AI features will be available in the next platform update.
+            This panel is hidden until a real backend metric is available.
           </p>
         </Card>
       </div>
