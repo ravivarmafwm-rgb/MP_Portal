@@ -31,7 +31,7 @@ class ParliamentaryAnalyticsTest extends TestCase
         $role = Role::create(['name' => 'Village Coordinator', 'slug' => 'village-coordinator', 'level' => 8, 'is_active' => true]);
         $permission = Permission::create(['name' => 'Analytics View', 'slug' => 'analytics.view', 'module' => 'analytics']);
         $role->permissions()->attach($permission);
-        $constituency = Constituency::create(['name' => 'Test PC', 'code' => 'PC-TEST', 'state' => 'Telangana', 'district' => 'Test']);
+        $constituency = Constituency::create(['name' => 'Test PC', 'code' => 'PC-TEST', 'state' => 'Andhra Pradesh', 'district' => 'Test']);
         $assembly = AssemblyConstituency::create(['name' => 'Test AC', 'code' => 'AC-TEST', 'constituency_id' => $constituency->id]);
         $mandal = Mandal::create(['name' => 'Test Mandal', 'code' => 'MAN-TEST', 'assembly_constituency_id' => $assembly->id]);
         $assigned = Village::create(['name' => 'Assigned Village', 'code' => 'VIL-A', 'mandal_id' => $mandal->id]);

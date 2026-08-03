@@ -21,6 +21,8 @@ import { Route as AppStaffRouteImport } from './routes/_app.staff'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppSchemesRouteImport } from './routes/_app.schemes'
 import { Route as AppProjectsRouteImport } from './routes/_app.projects'
+import { Route as AppProfileRouteImport } from './routes/_app.profile'
+import { Route as AppPreferencesRouteImport } from './routes/_app.preferences'
 import { Route as AppOfficerRouteImport } from './routes/_app.officer'
 import { Route as AppMpRouteImport } from './routes/_app.mp'
 import { Route as AppMlaRouteImport } from './routes/_app.mla'
@@ -111,6 +113,7 @@ import { Route as AppCitizensInteractionsRouteImport } from './routes/_app.citiz
 import { Route as AppCitizensGrievancesRouteImport } from './routes/_app.citizens.grievances'
 import { Route as AppCitizensFamiliesRouteImport } from './routes/_app.citizens.families'
 import { Route as AppCitizensDocumentsRouteImport } from './routes/_app.citizens.documents'
+import { Route as AppCitizensDashboardRouteImport } from './routes/_app.citizens.dashboard'
 import { Route as AppCitizensCreateProfileRouteImport } from './routes/_app.citizens.create-profile'
 import { Route as AppCitizensBoothMappingRouteImport } from './routes/_app.citizens.booth-mapping'
 import { Route as AppAnalyticsVillageRouteImport } from './routes/_app.analytics.village'
@@ -177,6 +180,16 @@ const AppSchemesRoute = AppSchemesRouteImport.update({
 const AppProjectsRoute = AppProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPreferencesRoute = AppPreferencesRouteImport.update({
+  id: '/preferences',
+  path: '/preferences',
   getParentRoute: () => AppRoute,
 } as any)
 const AppOfficerRoute = AppOfficerRouteImport.update({
@@ -647,6 +660,11 @@ const AppCitizensDocumentsRoute = AppCitizensDocumentsRouteImport.update({
   path: '/documents',
   getParentRoute: () => AppCitizensRoute,
 } as any)
+const AppCitizensDashboardRoute = AppCitizensDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppCitizensRoute,
+} as any)
 const AppCitizensCreateProfileRoute =
   AppCitizensCreateProfileRouteImport.update({
     id: '/create-profile',
@@ -708,6 +726,8 @@ export interface FileRoutesByFullPath {
   '/mla': typeof AppMlaRoute
   '/mp': typeof AppMpRoute
   '/officer': typeof AppOfficerRoute
+  '/preferences': typeof AppPreferencesRoute
+  '/profile': typeof AppProfileRoute
   '/projects': typeof AppProjectsRouteWithChildren
   '/schemes': typeof AppSchemesRouteWithChildren
   '/settings': typeof AppSettingsRoute
@@ -722,6 +742,7 @@ export interface FileRoutesByFullPath {
   '/analytics/village': typeof AppAnalyticsVillageRoute
   '/citizens/booth-mapping': typeof AppCitizensBoothMappingRoute
   '/citizens/create-profile': typeof AppCitizensCreateProfileRoute
+  '/citizens/dashboard': typeof AppCitizensDashboardRoute
   '/citizens/documents': typeof AppCitizensDocumentsRoute
   '/citizens/families': typeof AppCitizensFamiliesRoute
   '/citizens/grievances': typeof AppCitizensGrievancesRoute
@@ -813,6 +834,8 @@ export interface FileRoutesByTo {
   '/mla': typeof AppMlaRoute
   '/mp': typeof AppMpRoute
   '/officer': typeof AppOfficerRoute
+  '/preferences': typeof AppPreferencesRoute
+  '/profile': typeof AppProfileRoute
   '/settings': typeof AppSettingsRoute
   '/staff': typeof AppStaffRoute
   '/volunteer': typeof AppVolunteerRoute
@@ -823,6 +846,7 @@ export interface FileRoutesByTo {
   '/analytics/village': typeof AppAnalyticsVillageRoute
   '/citizens/booth-mapping': typeof AppCitizensBoothMappingRoute
   '/citizens/create-profile': typeof AppCitizensCreateProfileRoute
+  '/citizens/dashboard': typeof AppCitizensDashboardRoute
   '/citizens/documents': typeof AppCitizensDocumentsRoute
   '/citizens/families': typeof AppCitizensFamiliesRoute
   '/citizens/grievances': typeof AppCitizensGrievancesRoute
@@ -922,6 +946,8 @@ export interface FileRoutesById {
   '/_app/mla': typeof AppMlaRoute
   '/_app/mp': typeof AppMpRoute
   '/_app/officer': typeof AppOfficerRoute
+  '/_app/preferences': typeof AppPreferencesRoute
+  '/_app/profile': typeof AppProfileRoute
   '/_app/projects': typeof AppProjectsRouteWithChildren
   '/_app/schemes': typeof AppSchemesRouteWithChildren
   '/_app/settings': typeof AppSettingsRoute
@@ -936,6 +962,7 @@ export interface FileRoutesById {
   '/_app/analytics/village': typeof AppAnalyticsVillageRoute
   '/_app/citizens/booth-mapping': typeof AppCitizensBoothMappingRoute
   '/_app/citizens/create-profile': typeof AppCitizensCreateProfileRoute
+  '/_app/citizens/dashboard': typeof AppCitizensDashboardRoute
   '/_app/citizens/documents': typeof AppCitizensDocumentsRoute
   '/_app/citizens/families': typeof AppCitizensFamiliesRoute
   '/_app/citizens/grievances': typeof AppCitizensGrievancesRoute
@@ -1035,6 +1062,8 @@ export interface FileRouteTypes {
     | '/mla'
     | '/mp'
     | '/officer'
+    | '/preferences'
+    | '/profile'
     | '/projects'
     | '/schemes'
     | '/settings'
@@ -1049,6 +1078,7 @@ export interface FileRouteTypes {
     | '/analytics/village'
     | '/citizens/booth-mapping'
     | '/citizens/create-profile'
+    | '/citizens/dashboard'
     | '/citizens/documents'
     | '/citizens/families'
     | '/citizens/grievances'
@@ -1140,6 +1170,8 @@ export interface FileRouteTypes {
     | '/mla'
     | '/mp'
     | '/officer'
+    | '/preferences'
+    | '/profile'
     | '/settings'
     | '/staff'
     | '/volunteer'
@@ -1150,6 +1182,7 @@ export interface FileRouteTypes {
     | '/analytics/village'
     | '/citizens/booth-mapping'
     | '/citizens/create-profile'
+    | '/citizens/dashboard'
     | '/citizens/documents'
     | '/citizens/families'
     | '/citizens/grievances'
@@ -1248,6 +1281,8 @@ export interface FileRouteTypes {
     | '/_app/mla'
     | '/_app/mp'
     | '/_app/officer'
+    | '/_app/preferences'
+    | '/_app/profile'
     | '/_app/projects'
     | '/_app/schemes'
     | '/_app/settings'
@@ -1262,6 +1297,7 @@ export interface FileRouteTypes {
     | '/_app/analytics/village'
     | '/_app/citizens/booth-mapping'
     | '/_app/citizens/create-profile'
+    | '/_app/citizens/dashboard'
     | '/_app/citizens/documents'
     | '/_app/citizens/families'
     | '/_app/citizens/grievances'
@@ -1434,6 +1470,20 @@ declare module '@tanstack/react-router' {
       path: '/projects'
       fullPath: '/projects'
       preLoaderRoute: typeof AppProjectsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/profile': {
+      id: '/_app/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/preferences': {
+      id: '/_app/preferences'
+      path: '/preferences'
+      fullPath: '/preferences'
+      preLoaderRoute: typeof AppPreferencesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/officer': {
@@ -2066,6 +2116,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCitizensDocumentsRouteImport
       parentRoute: typeof AppCitizensRoute
     }
+    '/_app/citizens/dashboard': {
+      id: '/_app/citizens/dashboard'
+      path: '/dashboard'
+      fullPath: '/citizens/dashboard'
+      preLoaderRoute: typeof AppCitizensDashboardRouteImport
+      parentRoute: typeof AppCitizensRoute
+    }
     '/_app/citizens/create-profile': {
       id: '/_app/citizens/create-profile'
       path: '/create-profile'
@@ -2150,6 +2207,7 @@ const AppAnalyticsRouteWithChildren = AppAnalyticsRoute._addFileChildren(
 interface AppCitizensRouteChildren {
   AppCitizensBoothMappingRoute: typeof AppCitizensBoothMappingRoute
   AppCitizensCreateProfileRoute: typeof AppCitizensCreateProfileRoute
+  AppCitizensDashboardRoute: typeof AppCitizensDashboardRoute
   AppCitizensDocumentsRoute: typeof AppCitizensDocumentsRoute
   AppCitizensFamiliesRoute: typeof AppCitizensFamiliesRoute
   AppCitizensGrievancesRoute: typeof AppCitizensGrievancesRoute
@@ -2164,6 +2222,7 @@ interface AppCitizensRouteChildren {
 const AppCitizensRouteChildren: AppCitizensRouteChildren = {
   AppCitizensBoothMappingRoute: AppCitizensBoothMappingRoute,
   AppCitizensCreateProfileRoute: AppCitizensCreateProfileRoute,
+  AppCitizensDashboardRoute: AppCitizensDashboardRoute,
   AppCitizensDocumentsRoute: AppCitizensDocumentsRoute,
   AppCitizensFamiliesRoute: AppCitizensFamiliesRoute,
   AppCitizensGrievancesRoute: AppCitizensGrievancesRoute,
@@ -2417,6 +2476,8 @@ interface AppRouteChildren {
   AppMlaRoute: typeof AppMlaRoute
   AppMpRoute: typeof AppMpRoute
   AppOfficerRoute: typeof AppOfficerRoute
+  AppPreferencesRoute: typeof AppPreferencesRoute
+  AppProfileRoute: typeof AppProfileRoute
   AppProjectsRoute: typeof AppProjectsRouteWithChildren
   AppSchemesRoute: typeof AppSchemesRouteWithChildren
   AppSettingsRoute: typeof AppSettingsRoute
@@ -2440,6 +2501,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppMlaRoute: AppMlaRoute,
   AppMpRoute: AppMpRoute,
   AppOfficerRoute: AppOfficerRoute,
+  AppPreferencesRoute: AppPreferencesRoute,
+  AppProfileRoute: AppProfileRoute,
   AppProjectsRoute: AppProjectsRouteWithChildren,
   AppSchemesRoute: AppSchemesRouteWithChildren,
   AppSettingsRoute: AppSettingsRoute,

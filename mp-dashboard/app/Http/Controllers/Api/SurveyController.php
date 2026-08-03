@@ -239,7 +239,16 @@ class SurveyController extends Controller
     }
     private function syncQuestions(Survey $survey,array $questions,string $userId):void
     {
-        $keep=[];foreach($questions as $index=>$data){$id=$data['id']??null;if($id&&!$survey->questions()->whereKey($id)->exists())throw ValidationException::withMessages(["questions.{$index}.id"=>['The question does not belong to this survey.']]);unset($data['id']);$question=$id?$survey->questions()->findOrFail($id):new SurveyQuestion(['survey_id'=>$survey->id,'created_by'=>$userId]);$question->fill([...$data,'sort_order'=>$index,'updated_by'=>$userId])->save();$keep[]=$question->id;}$survey->questions()->whereNotIn('id',$keep)->delete();
+        $keep=[]; $knownIds=collect($questions)->pluck('id')->filter()->values();
+        foreach($questions as $index=>$data){
+            $id=$data['id']??null;
+            if($id&&!$survey->questions()->whereKey($id)->exists())throw ValidationException::withMessages(["questions.{$index}.id"=>['The question does not belong to this survey.']]);
+            foreach(($data['branching_rules']??[]) as $rule){
+                if(($rule['when_question_id']??null)===$id || ($rule['when_question_id']??null) && !$knownIds->contains($rule['when_question_id'])) throw ValidationException::withMessages(["questions.{$index}.branching_rules"=>['Branching rules must reference another question in this survey.']]);
+            }
+            unset($data['id']);$question=$id?$survey->questions()->findOrFail($id):new SurveyQuestion(['survey_id'=>$survey->id,'created_by'=>$userId]);$question->fill([...$data,'sort_order'=>$index,'updated_by'=>$userId])->save();$keep[]=$question->id;
+        }
+        $survey->questions()->whereNotIn('id',$keep)->delete();
     }
     private function scopeResponses($query, Request $request): void
     {

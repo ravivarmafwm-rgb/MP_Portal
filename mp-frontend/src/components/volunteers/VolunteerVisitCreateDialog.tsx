@@ -53,17 +53,17 @@ export function VolunteerVisitCreateDialog() {
     queryFn: () => fetchVolunteers({ per_page: 100 }),
     enabled: open,
   });
-  const villages = useQuery({
+  const villages = useQuery<{ id: string; name: string }[]>({
     queryKey: ["visit-villages"],
-    queryFn: fetchLocVillages,
+    queryFn: () => fetchLocVillages(),
     enabled: open,
   });
-  const citizens = useQuery({
+  const citizens = useQuery<{ data: CitizenOption[] }>({
     queryKey: ["visit-citizens"],
     queryFn: () => fetchCitizens({ per_page: 100 }),
     enabled: open && targetType === "citizen",
   });
-  const families = useQuery({
+  const families = useQuery<{ data: FamilyOption[] }>({
     queryKey: ["visit-families"],
     queryFn: () => fetchFamilies({ per_page: 100 }),
     enabled: open && targetType === "family",

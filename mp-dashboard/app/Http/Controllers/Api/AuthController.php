@@ -10,6 +10,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterCitizenRequest;
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Requests\Auth\ChangePasswordRequest;
+use App\Http\Requests\Auth\UpdatePreferencesRequest;
 use App\Http\Resources\AuthUserResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -128,6 +129,19 @@ class AuthController extends Controller
         $user = $request->user();
         $user->update($request->validated());
         return response()->json(AuthUserResource::make($user->load('role'))->resolve());
+    }
+
+    public function preferences(Request $request): JsonResponse
+    {
+        return response()->json(['data' => $request->user()->preferences ?? []]);
+    }
+
+    public function updatePreferences(UpdatePreferencesRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $user->preferences = array_merge($user->preferences ?? [], $request->validated());
+        $user->save();
+        return response()->json(['data' => $user->preferences]);
     }
 
     /**

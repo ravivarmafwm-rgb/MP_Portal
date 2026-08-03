@@ -27,7 +27,7 @@ class SaveCitizenAddressRequest extends FormRequest
             'post_office' => ['sometimes', 'nullable', 'string', 'max:100'],
             'pincode' => [$update ? 'sometimes' : 'required', 'string', 'regex:/^[1-9][0-9]{5}$/'],
             'district' => [$update ? 'sometimes' : 'required', 'string', 'max:100'],
-            'state' => [$update ? 'sometimes' : 'required', 'string', 'max:100'],
+            'state' => [$update ? 'sometimes' : 'required', 'in:Andhra Pradesh'],
             'country' => ['sometimes', 'nullable', 'string', 'max:100'],
             'latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],

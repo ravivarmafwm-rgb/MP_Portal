@@ -11,6 +11,8 @@ use App\Models\Project;
 use App\Models\Volunteer;
 use App\Models\Grievance;
 use App\Models\SchemeApplication;
+use App\Models\PublicMeeting;
+use App\Models\Appointment;
 use App\Models\ActivityLog;
 use App\Http\Requests\Document\UploadDocumentRequest;
 use App\Http\Requests\Document\UploadDocumentVersionRequest;
@@ -22,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Services\UploadSecurityService;
+use App\Jobs\ProcessDocumentOcr;
 
 class DocumentController extends Controller
 {
@@ -144,7 +147,11 @@ class DocumentController extends Controller
             throw $exception;
         }
 
-        return response()->json($document, 201);
+        if ($request->boolean('request_ocr') && in_array($document->mime_type, ['application/pdf', 'image/jpeg', 'image/png'], true)) {
+            $document->update(['ocr_status' => 'queued']);
+            ProcessDocumentOcr::dispatch($document->id)->onQueue('documents');
+        }
+        return response()->json($document->fresh(), 201);
     }
 
     public function versions(Request $request, string $id): JsonResponse
@@ -302,6 +309,20 @@ class DocumentController extends Controller
         return response()->json(['message' => 'Document archived successfully.']);
     }
 
+    public function search(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Document::class);
+        $term = trim((string) $request->get('q', ''));
+        abort_if(mb_strlen($term) < 2, 422, 'Search text must contain at least two characters.');
+        $query = Document::query()->where(function ($documents) use ($term): void {
+            $documents->where('title', 'ilike', "%{$term}%")
+                ->orWhere('document_number', 'ilike', "%{$term}%")
+                ->orWhere('file_name', 'ilike', "%{$term}%")
+                ->orWhere('ocr_text', 'ilike', "%{$term}%");
+        });
+        return response()->json($query->orderByDesc('created_at')->paginate(min(max($request->integer('per_page', 20), 1), 100)));
+    }
+
     private function resolveModelClass(string $type): string
     {
         return match ($type) {
@@ -310,6 +331,8 @@ class DocumentController extends Controller
             'project'   => Project::class,
             'grievance' => Grievance::class,
             'scheme_application' => SchemeApplication::class,
+            'public_meeting' => PublicMeeting::class,
+            'appointment' => Appointment::class,
             default     => throw new \InvalidArgumentException('Invalid documentable type'),
         };
     }

@@ -10,6 +10,7 @@ import {
   fetchProjectBudgetSummary,
   fetchProjectStats,
   fetchProjects,
+  type ProjectRecord,
 } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/projects/analytics")({
@@ -27,10 +28,10 @@ export const Route = createFileRoute("/_app/projects/analytics")({
 
 function AnalyticsPage() {
   const { projects, stats, budget } = Route.useLoaderData();
-  const projectRows = projects.data ?? [];
+  const projectRows = (projects.data ?? []) as ProjectRecord[];
   const statusBreakdown = useMemo(() => {
     const counts = new Map<string, number>();
-    (projects.data ?? []).forEach((project) =>
+    (projects.data ?? []).forEach((project: ProjectRecord) =>
       counts.set(project.status, (counts.get(project.status) ?? 0) + 1),
     );
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
@@ -150,7 +151,7 @@ function AnalyticsPage() {
                 </tr>
               </thead>
               <tbody>
-                {projectRows.map((project) => (
+                {projectRows.map((project: ProjectRecord) => (
                   <tr key={project.id} className="border-b last:border-0">
                     <td className="p-2 font-medium">{project.name}</td>
                     <td className="p-2 capitalize">

@@ -24,6 +24,9 @@ import {
   type FamilyRecord,
 } from "@/lib/api";
 
+type CitizenOption = { id: string; unique_id?: string; first_name: string; last_name: string };
+type VillageOption = { id: string; name: string };
+
 export function FamilyDialog({ family }: { family?: FamilyRecord }) {
   const [open, setOpen] = useState(false);
   const [headId, setHeadId] = useState("");
@@ -39,12 +42,12 @@ export function FamilyDialog({ family }: { family?: FamilyRecord }) {
   useEffect(() => {
     if (!open) setHeadSearch("");
   }, [open]);
-  const citizens = useQuery({
+  const citizens = useQuery<{ data: CitizenOption[] }>({
     queryKey: ["family-citizen-options", headSearch],
     queryFn: () => fetchCitizens({ search: headSearch, per_page: 20 }),
     enabled: open,
   });
-  const villages = useQuery({
+  const villages = useQuery<VillageOption[]>({
     queryKey: ["location-villages"],
     queryFn: () => fetchLocVillages(),
     enabled: open,
@@ -112,10 +115,13 @@ export function FamilyDialog({ family }: { family?: FamilyRecord }) {
               <option value="">
                 {family ? "Keep current head" : "Select head"}
               </option>
-              {citizens.data?.data.map((citizen) => (
+              {(family
+                ? family.family_members.map((member) => member.citizen)
+                : citizens.data?.data ?? []
+              ).map((citizen) => (
                 <option key={String(citizen.id)} value={String(citizen.id)}>
                   {String(citizen.first_name)} {String(citizen.last_name)} (
-                  {String(citizen.unique_id)})
+                  {String(citizen.unique_id ?? "")})
                 </option>
               ))}
             </select>

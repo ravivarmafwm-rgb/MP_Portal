@@ -28,7 +28,7 @@ class CitizenEnrollmentWorkflowTest extends TestCase
             'date_of_birth' => '1990-04-10', 'gender' => 'Female',
             'mobile_number' => '9876543210', 'aadhaar_number' => '123412341234',
             'is_voter' => true, 'village_id' => $village->id,
-            'pincode' => '500001', 'district' => 'Test District', 'state' => 'Telangana',
+            'pincode' => '500001', 'district' => 'Test District', 'state' => 'Andhra Pradesh',
         ])->assertCreated()
             ->assertJsonPath('aadhaar_masked', 'XXXX XXXX 1234')
             ->assertJsonMissingPath('aadhaar_number')
@@ -53,7 +53,7 @@ class CitizenEnrollmentWorkflowTest extends TestCase
             'date_of_birth' => '1990-04-10', 'gender' => 'Female',
             'mobile_number' => '9876543210', 'aadhaar_number' => '123412341234',
             'is_voter' => false, 'village_id' => $village->id,
-            'pincode' => '500001', 'district' => 'Test', 'state' => 'Telangana',
+            'pincode' => '500001', 'district' => 'Test', 'state' => 'Andhra Pradesh',
         ];
         $this->postJson('/api/citizens', $payload)->assertCreated();
         $this->postJson('/api/citizens', [...$payload, 'mobile_number' => '9876543211'])
@@ -70,13 +70,32 @@ class CitizenEnrollmentWorkflowTest extends TestCase
         $id = $this->postJson('/api/citizens', [
             'first_name' => 'Scoped', 'last_name' => 'Citizen',
             'date_of_birth' => '1990-04-10', 'gender' => 'Male', 'is_voter' => false,
-            'village_id' => $village->id, 'pincode' => '500001', 'district' => 'Test', 'state' => 'Telangana',
+            'village_id' => $village->id, 'pincode' => '500001', 'district' => 'Test', 'state' => 'Andhra Pradesh',
         ])->assertCreated()->json('id');
 
         Sanctum::actingAs($this->user('staff', ['citizens.view', 'citizens.update']));
         $this->getJson('/api/citizens')->assertOk()->assertJsonPath('meta.total', 0);
         $this->getJson("/api/citizens/{$id}")->assertForbidden();
         $this->putJson("/api/citizens/{$id}", ['occupation' => 'Blocked'])->assertForbidden();
+    }
+
+    public function test_citizen_dashboard_returns_scoped_live_aggregates(): void
+    {
+        $village = $this->village();
+        Sanctum::actingAs($this->user('super-admin'));
+        $this->postJson('/api/citizens', [
+            'first_name' => 'Dashboard', 'last_name' => 'Citizen',
+            'date_of_birth' => '1990-04-10', 'gender' => 'Female',
+            'mobile_number' => '9876543210', 'is_voter' => true,
+            'village_id' => $village->id, 'pincode' => '500001',
+            'district' => 'Test District', 'state' => 'Andhra Pradesh',
+        ])->assertCreated();
+
+        $this->getJson('/api/citizens/dashboard')
+            ->assertOk()
+            ->assertJsonPath('summary.total_citizens', 1)
+            ->assertJsonPath('summary.female', 1)
+            ->assertJsonStructure(['age_distribution', 'gender_distribution', 'monthly_registrations', 'alerts', 'geographic_distribution']);
     }
 
     private function user(string $slug, array $permissions = []): User

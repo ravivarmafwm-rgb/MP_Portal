@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\Grievance;
 use App\Models\SchemeApplication;
+use App\Models\PublicMeeting;
+use App\Models\Appointment;
 use App\Services\GeographicScopeService;
 
 class DocumentPolicy
@@ -34,7 +36,7 @@ class DocumentPolicy
     private function withinScope(User $user, mixed $owner): bool
     {
         if (!$owner) return false;
-        if (!($owner instanceof Citizen || $owner instanceof Volunteer || $owner instanceof Project || $owner instanceof Grievance || $owner instanceof SchemeApplication)) return false;
+        if (!($owner instanceof Citizen || $owner instanceof Volunteer || $owner instanceof Project || $owner instanceof Grievance || $owner instanceof SchemeApplication || $owner instanceof PublicMeeting || $owner instanceof Appointment)) return false;
 
         return app(GeographicScopeService::class)->allows($user, $owner);
     }

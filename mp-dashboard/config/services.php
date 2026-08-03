@@ -1,6 +1,11 @@
 <?php
 
 return [
+    'ocr' => [
+        'endpoint' => env('OCR_ENDPOINT'),
+        'token' => env('OCR_TOKEN'),
+        'timeout' => env('OCR_TIMEOUT', 60),
+    ],
 
     /*
     |--------------------------------------------------------------------------

@@ -38,6 +38,7 @@ class FamilyWorkflowTest extends TestCase
             ->assertJsonPath('members_count', 1)
             ->assertJsonPath('voters_count', 1)
             ->json();
+        $this->getJson("/api/families/{$family['id']}")->assertOk()->assertJsonPath('family_id', $family['family_id']);
 
         $this->postJson("/api/families/{$family['id']}/members", [
             'citizen_id' => $member->id,
@@ -97,6 +98,19 @@ class FamilyWorkflowTest extends TestCase
             'head_citizen_id' => $otherHead->id, 'village_id' => $otherVillage->id,
             'economic_status' => 'middle', 'is_bpl' => false,
         ])->assertForbidden();
+    }
+
+    public function test_family_member_routes_reject_members_from_another_family(): void
+    {
+        [$village] = $this->villages();
+        $admin = $this->superAdmin();
+        $firstHead = $this->citizen('CIT-OWN-1', 'First', true, $village);
+        $secondHead = $this->citizen('CIT-OWN-2', 'Second', true, $village);
+        Sanctum::actingAs($admin);
+        $first = $this->postJson('/api/families', ['head_citizen_id' => $firstHead->id, 'village_id' => $village->id, 'economic_status' => 'middle', 'is_bpl' => false])->assertCreated()->json();
+        $second = $this->postJson('/api/families', ['head_citizen_id' => $secondHead->id, 'village_id' => $village->id, 'economic_status' => 'middle', 'is_bpl' => false])->assertCreated()->json();
+        $member = \App\Models\FamilyMember::where('family_id', $second['id'])->firstOrFail();
+        $this->deleteJson("/api/families/{$first['id']}/members/{$member->id}")->assertNotFound();
     }
 
     private function citizen(string $id, string $firstName, bool $voter, Village $village): Citizen

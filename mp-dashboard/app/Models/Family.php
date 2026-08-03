@@ -91,4 +91,9 @@ class Family extends Model
     {
         return $this->morphMany(ActivityLog::class, 'loggable');
     }
+
+    public function documents()
+    {
+        return $this->morphMany(Document::class, 'documentable');
+    }
 }

@@ -58,7 +58,7 @@ class ProjectPhotoTest extends TestCase
     {
         $role=Role::create(['name'=>'Constituency Coordinator','slug'=>'constituency-coordinator','level'=>3,'is_active'=>true]);
         foreach ([['Projects View','projects.view'],['Projects Manage','projects.manage']] as [$name,$slug]) $role->permissions()->attach(Permission::create(['name'=>$name,'slug'=>$slug,'module'=>'projects']));
-        $constituency=Constituency::create(['name'=>'Test PC','code'=>'PC-PHOTO','state'=>'Telangana','district'=>'Test']);
+        $constituency=Constituency::create(['name'=>'Test PC','code'=>'PC-PHOTO','state'=>'Andhra Pradesh','district'=>'Test']);
         $assembly=AssemblyConstituency::create(['name'=>'Test AC','code'=>'AC-PHOTO','constituency_id'=>$constituency->id]);
         $mandal=Mandal::create(['name'=>'Test Mandal','code'=>'MAN-PHOTO','assembly_constituency_id'=>$assembly->id]);
         $village=Village::create(['name'=>'Assigned','code'=>'PHOTO-V','mandal_id'=>$mandal->id]);

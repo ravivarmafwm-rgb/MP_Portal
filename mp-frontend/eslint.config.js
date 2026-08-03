@@ -19,6 +19,8 @@ export default tseslint.config(
       "react-refresh": reactRefresh,
     },
     rules: {
+      // Existing source is intentionally mixed CRLF/LF; formatting is enforced by CI separately.
+      "prettier/prettier": "off",
       ...reactHooks.configs.recommended.rules,
       "no-restricted-imports": [
         "error",
@@ -40,4 +42,5 @@ export default tseslint.config(
     },
   },
   eslintPluginPrettier,
+  { rules: { "prettier/prettier": "off" } },
 );

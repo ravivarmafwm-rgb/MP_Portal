@@ -49,6 +49,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout',          [AuthController::class, 'logout']);
     Route::get('/user',             [AuthController::class, 'me']);
     Route::put('/user/profile',     [AuthController::class, 'updateProfile']);
+    Route::get('/user/preferences', [AuthController::class, 'preferences']);
+    Route::put('/user/preferences', [AuthController::class, 'updatePreferences']);
     Route::put('/user/password',    [AuthController::class, 'changePassword'])->middleware('throttle:6,1');
     Route::get('/user/sessions', [AuthController::class, 'sessions']);
     Route::delete('/user/sessions/others', [AuthController::class, 'revokeOtherSessions']);
@@ -58,7 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Role-scoped dashboards
     Route::get('/dashboard/stats', [DashboardController::class, 'stats'])
-        ->middleware('role:super-admin,mp,mp-staff,constituency-coordinator');
+        ->middleware(['role:super-admin,mp,mp-staff,constituency-coordinator','cache.get:60']);
     Route::get('/dashboard/mla/stats', [MlaDashboardController::class, 'stats'])
         ->middleware('role:mla,super-admin');
     Route::get('/dashboard/volunteer/stats', [VolunteerDashboardController::class, 'stats'])
@@ -72,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/citizen/grievances', [GrievanceController::class, 'storeCitizenGrievance'])->middleware(['role:citizen', 'throttle:10,1']);
     Route::post('/citizen/grievances/{grievance}/feedback', [GrievanceController::class, 'submitCitizenFeedback'])->middleware('role:citizen');
     Route::get('/citizens/stats', [CitizenController::class, 'stats'])->middleware('permission:citizens.view');
+    Route::get('/citizens/dashboard', [CitizenController::class, 'dashboard'])->middleware('permission:citizens.view')->middleware('cache.get:60');
     Route::get('/citizens/census', [CitizenController::class, 'census'])->middleware('permission:citizens.view');
     Route::get('/citizens/census/export', [CitizenController::class, 'exportCensus'])->middleware('permission:citizens.export');
     Route::get('/citizens/export', [CitizenController::class, 'exportDirectory'])->middleware('permission:citizens.export');
@@ -218,6 +221,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Documents
     Route::get('/documents', [DocumentController::class, 'index'])->middleware('permission:documents.view');
+    Route::get('/documents/search', [DocumentController::class, 'search'])->middleware('permission:documents.view');
     Route::get('/document-categories', [DocumentController::class, 'categories'])->middleware('permission:documents.view');
     Route::post('/documents/upload', [DocumentController::class, 'upload'])->middleware('permission:documents.manage');
     Route::get('/documents/{document}/versions', [DocumentController::class, 'versions']);
@@ -248,8 +252,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── Meetings / Appointments / Tours / Janata Darbar ─────────────────────────
     Route::prefix('meetings')->middleware('permission:meetings.view')->group(function () {
-        Route::get('/dashboard',            [MeetingController::class, 'dashboardStats']);
-        Route::get('/engagement-analytics', [MeetingController::class, 'engagementAnalytics']);
+        Route::get('/dashboard',            [MeetingController::class, 'dashboardStats'])->middleware('cache.get:60');
+        Route::get('/engagement-analytics', [MeetingController::class, 'engagementAnalytics'])->middleware('cache.get:120');
         Route::get('/calendar',             [MeetingController::class, 'calendar']);
 
         // Appointments

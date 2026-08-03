@@ -24,6 +24,7 @@ import {
 } from "@/lib/api";
 
 type Member = FamilyRecord["family_members"][number];
+type CitizenOption = { id: string; unique_id?: string; first_name: string; last_name: string };
 
 export function FamilyMemberDialog({
   familyId,
@@ -40,7 +41,7 @@ export function FamilyMemberDialog({
   );
   const [isHead, setIsHead] = useState(member?.is_head ?? false);
   const client = useQueryClient();
-  const citizens = useQuery({
+  const citizens = useQuery<{ data: CitizenOption[] }>({
     queryKey: ["family-member-options", search],
     queryFn: () => fetchCitizens({ search, per_page: 20 }),
     enabled: open,

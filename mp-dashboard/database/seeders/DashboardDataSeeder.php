@@ -137,8 +137,8 @@ class DashboardDataSeeder extends Seeder
                     'ward_id'          => $wardId,
                     'polling_booth_id' => $boothId,
                     'pincode'          => (string) rand(500001, 509999),
-                    'district'         => 'Hyderabad',
-                    'state'            => 'Telangana',
+                    'district'         => 'Visakhapatnam',
+                    'state'            => 'Andhra Pradesh',
                     'is_primary'       => true,
                     'created_by'       => $this->adminUser->id,
                 ]);
@@ -281,7 +281,7 @@ class DashboardDataSeeder extends Seeder
                 'start_date'                => now()->subMonths(rand(3, 12))->toDateString(),
                 'scheduled_completion_date' => $data['due'],
                 'description'               => 'Government funded project under MPLADS scheme.',
-                'location'                  => $this->villageIds[array_rand($this->villageIds)] ? 'Hyderabad' : 'Telangana',
+                'location'                  => $this->villageIds[array_rand($this->villageIds)] ? 'Visakhapatnam' : 'Andhra Pradesh',
                 'created_by'                => $this->adminUser->id,
             ]);
         }

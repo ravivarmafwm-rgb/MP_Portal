@@ -38,6 +38,11 @@ class Document extends Model
         'remarks',
         'created_by',
         'updated_by',
+        'ocr_status',
+        'ocr_text',
+        'ocr_error',
+        'ocr_processed_at',
+        'retention_until',
     ];
 
     protected $casts = [
@@ -46,6 +51,8 @@ class Document extends Model
         'is_confidential' => 'boolean',
         'is_verified' => 'boolean',
         'verified_date' => 'date',
+        'ocr_processed_at' => 'datetime',
+        'retention_until' => 'date',
     ];
 
     protected $hidden = ['file_path', 'storage_disk', 'checksum_sha256'];

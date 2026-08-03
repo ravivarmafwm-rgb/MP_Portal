@@ -40,6 +40,7 @@ export function DocumentUploadDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [requestOcr, setRequestOcr] = useState(false);
   const categories = useQuery({
     queryKey: ["document-categories"],
     queryFn: fetchDocumentCategories,
@@ -55,6 +56,7 @@ export function DocumentUploadDialog({
       data.append("document_category_id", categoryId);
       data.append("documentable_type", type);
       data.append("documentable_id", documentableId);
+      data.append("request_ocr", requestOcr ? "1" : "0");
       return uploadDocument(data);
     },
     onSuccess: async () => {
@@ -64,6 +66,7 @@ export function DocumentUploadDialog({
       setTitle("");
       setDescription("");
       setCategoryId("");
+      setRequestOcr(false);
       await client.invalidateQueries({ queryKey: ["documents"] });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -134,6 +137,14 @@ export function DocumentUploadDialog({
               onChange={(event) => setDescription(event.target.value)}
             />
           </Field>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={requestOcr}
+              onChange={(event) => setRequestOcr(event.target.checked)}
+            />
+            Request OCR extraction (requires configured OCR provider)
+          </label>
           <Button
             className="w-full"
             disabled={mutation.isPending || !categoryId}

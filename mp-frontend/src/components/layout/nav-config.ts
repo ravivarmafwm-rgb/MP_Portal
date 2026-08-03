@@ -29,6 +29,7 @@ export const navSections: NavSection[] = [
     url: "/citizens",
     icon: Users,
     children: [
+      { title: "Citizen Dashboard", url: "/citizens/dashboard" },
       { title: "Citizen List", url: "/citizens/list" },
       { title: "Create Profile", url: "/citizens/create-profile" },
       { title: "Citizen Profile", url: "/citizens/profile" },
@@ -167,6 +168,8 @@ export const navSections: NavSection[] = [
     ],
   },
   { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Profile", url: "/profile", icon: Settings },
+  { title: "Preferences", url: "/preferences", icon: Settings },
 ];
 
 export function findBreadcrumb(

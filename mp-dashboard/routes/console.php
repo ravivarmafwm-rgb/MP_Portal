@@ -1,11 +1,11 @@
 <?php
 
 use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use App\Models\CommunicationCampaign;
 use App\Services\CommunicationCampaignDispatcher;
 use App\Services\GrievanceEscalationService;
+use Illuminate\Support\Facades\Artisan;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -19,3 +19,6 @@ Schedule::call(fn () => app(GrievanceEscalationService::class)->processOverdue()
     ->everyFifteenMinutes()
     ->name('escalate-overdue-grievances')
     ->withoutOverlapping();
+
+Schedule::command('documents:retention')->dailyAt('02:30')->withoutOverlapping();
+Schedule::command('meetings:reminders')->dailyAt('08:00')->withoutOverlapping();

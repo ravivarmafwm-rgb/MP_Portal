@@ -5,6 +5,7 @@ import {
   User,
   Settings,
   LogOut,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -115,13 +116,17 @@ export function AppHeader() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              Profile
+            <DropdownMenuItem asChild>
+              <Link to="/profile">
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              Preferences
+            <DropdownMenuItem asChild>
+              <Link to="/preferences">
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                Preferences
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

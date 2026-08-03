@@ -10,6 +10,7 @@ import {
   deleteSchemeRequiredDocument,
   fetchSchemeEligibilityRules,
   getApiErrorMessage,
+  type SchemeEligibilityRuleInput,
 } from "@/lib/api";
 import { SchemeEligibilityRuleDialog } from "@/components/schemes/SchemeEligibilityRuleDialog";
 import { SchemeRequiredDocumentDialog } from "@/components/schemes/SchemeRequiredDocumentDialog";
@@ -116,8 +117,8 @@ function EligibilityPage() {
                         rule={{
                           id: rule.id,
                           rule_name: rule.rule_name,
-                          field_name: rule.field_name!,
-                          operator: rule.operator!,
+                          field_name: rule.field_name as SchemeEligibilityRuleInput["field_name"],
+                          operator: rule.operator as SchemeEligibilityRuleInput["operator"],
                           value: rule.value!,
                           is_mandatory: rule.is_mandatory,
                           sort_order: rule.sort_order ?? 0,

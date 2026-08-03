@@ -74,6 +74,8 @@ export interface AuthUser {
   role_slug: string;
   citizen_id?: string | null;
   initials: string;
+  mfa_enabled?: boolean;
+  mfa_required?: boolean;
 }
 
 export async function apiLogin(
@@ -234,6 +236,31 @@ export async function updateMyProfile(data: { name: string; email: string }) {
   const res = await api.put("/user/profile", data);
   return res.data as AuthUser;
 }
+export type UserPreferences = {
+  theme: "light" | "dark" | "system";
+  language: string;
+  timezone: string;
+  session_timeout: string;
+  notif_email: boolean;
+  notif_sms: boolean;
+  notif_browser: boolean;
+  notif_grievance_updates: boolean;
+  notif_scheme_updates: boolean;
+  notif_project_updates: boolean;
+  email_daily_summary: boolean;
+  email_weekly_report: boolean;
+  email_critical_alerts: boolean;
+  password_expiry_days: string;
+  require_2fa_prompt: boolean;
+};
+export async function fetchUserPreferences() {
+  const res = await api.get("/user/preferences");
+  return res.data as { data: Partial<UserPreferences> };
+}
+export async function updateUserPreferences(data: Partial<UserPreferences>) {
+  const res = await api.put("/user/preferences", data);
+  return res.data as { data: UserPreferences };
+}
 export async function changeMyPassword(data: {
   current_password: string;
   password: string;
@@ -295,13 +322,23 @@ export interface CitizenDetailRecord {
   date_of_birth?: string | null;
   gender: string;
   mobile_number?: string | null;
+  alternate_mobile?: string | null;
   email?: string | null;
   aadhaar_masked?: string | null;
   voter_id?: string | null;
   occupation?: string | null;
   education?: string | null;
   marital_status?: string | null;
+  father_name?: string | null;
+  mother_name?: string | null;
+  spouse_name?: string | null;
+  blood_group?: string | null;
   is_voter: boolean;
+  voter_status?: string | null;
+  disability_status?: string | null;
+  disability_details?: string | null;
+  is_deceased?: boolean;
+  date_of_death?: string | null;
   addresses: Array<{
     id: string;
     address_type: string;
@@ -350,6 +387,14 @@ export interface CitizenDetailRecord {
     status: string;
     meeting_type?: string;
     follow_up_required?: boolean;
+  }>;
+  volunteer_visits: Array<{
+    id: string;
+    visit_type: string;
+    status: string;
+    scheduled_at?: string | null;
+    outcome?: string | null;
+    volunteer?: { first_name?: string; last_name?: string } | null;
   }>;
   related_projects: Array<{
     id: string;
@@ -446,6 +491,27 @@ export async function deleteCitizenAddress(
 export async function fetchCitizenStats() {
   const res = await api.get("/citizens/stats");
   return res.data;
+}
+export interface CitizenDashboardData {
+  summary: Record<string, number>;
+  age_distribution: Array<{ label: string; count: number }>;
+  gender_distribution: Array<{ label: string; count: number }>;
+  occupation_distribution: Array<{ label: string; count: number }>;
+  education_distribution: Array<{ label: string; count: number }>;
+  scheme_coverage: Array<{ label: string; count: number }>;
+  monthly_registrations: Array<{ month: string; count: number }>;
+  family_distribution: Array<{ label: string; count: number }>;
+  geographic_distribution: Array<Record<string, string | number | null>>;
+  alerts: Record<string, number>;
+  recent_citizens: Array<{ id: string; unique_id: string; name: string; created_at: string | null }>;
+  recent_activity: Array<{ id: string; action: string; description: string | null; module: string | null; created_at: string | null }>;
+  recent_documents: Array<{ id: string; title: string | null; created_at: string | null }>;
+  recent_scheme_enrollments: Array<{ id: string; scheme: string | null; beneficiary_name: string | null; enrollment_date: string | null }>;
+  generated_at: string;
+}
+export async function fetchCitizenDashboard() {
+  const res = await api.get("/citizens/dashboard");
+  return res.data as CitizenDashboardData;
 }
 
 export async function downloadCitizenDirectory(
@@ -1542,6 +1608,7 @@ export interface SchemeRecord {
     operator: string | null;
     value: string | null;
     is_mandatory: boolean;
+    sort_order?: number;
     error_message: string | null;
   }>;
   required_documents?: SchemeRequiredDocumentRecord[];

@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { fetchProjects } from "@/lib/api";
+import { fetchProjects, type ProjectRecord } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/projects/contractors")({
   head: () => ({ meta: [{ title: "Contractor Management" }] }),
@@ -29,7 +29,7 @@ function ContractorsPage() {
         budget: number;
       }
     >();
-    projects.forEach((project) => {
+    projects.forEach((project: ProjectRecord) => {
       if (!project.contractor?.id || !project.contractor.name) return;
       const current = grouped.get(project.contractor.id) ?? {
         id: project.contractor.id,

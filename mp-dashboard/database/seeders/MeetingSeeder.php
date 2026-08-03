@@ -106,7 +106,7 @@ class MeetingSeeder extends Seeder
                 'meeting_type'        => ['town_hall', 'community_meeting', 'department_review', 'stakeholder_meeting', 'awareness_program'][$i % 5],
                 'status'              => $mDate->isPast() ? 'completed' : 'scheduled',
                 'venue'               => 'Community Hall, ' . $village->name,
-                'venue_address'       => $village->name . ', ' . ($village->mandal?->name ?? 'Hyderabad'),
+                'venue_address'       => $village->name . ', ' . ($village->mandal?->name ?? 'Visakhapatnam'),
                 'constituency_id'     => $constituency?->id,
                 'mandal_id'           => $village->mandal_id,
                 'village_id'          => $village->id,

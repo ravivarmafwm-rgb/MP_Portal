@@ -31,6 +31,8 @@ class FamilyResource extends JsonResource
             'remarks' => $this->remarks,
             'family_members' => self::whenLoaded('familyMembers'),
             'activity_logs' => self::whenLoaded('activityLogs'),
+            'documents' => self::whenLoaded('documents'),
+            'scheme_beneficiaries' => self::whenLoaded('schemeBeneficiaries'),
             'total_benefits_received' => $this->when(isset($this->total_benefits_received), $this->total_benefits_received),
         ];
     }

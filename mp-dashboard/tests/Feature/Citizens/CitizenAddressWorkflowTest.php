@@ -24,10 +24,10 @@ class CitizenAddressWorkflowTest extends TestCase
         Sanctum::actingAs($this->user('super-admin'));
         $citizen = $this->postJson('/api/citizens', [
             'first_name' => 'Address', 'last_name' => 'Citizen', 'date_of_birth' => '1990-01-01', 'gender' => 'Female',
-            'is_voter' => false, 'village_id' => $village->id, 'pincode' => '500001', 'district' => 'Test', 'state' => 'Telangana',
+            'is_voter' => false, 'village_id' => $village->id, 'pincode' => '500001', 'district' => 'Test', 'state' => 'Andhra Pradesh',
         ])->assertCreated()->json();
         $created = $this->postJson("/api/citizens/{$citizen['id']}/addresses", [
-            'address_type' => 'temporary', 'house_number' => '12', 'pincode' => '500002', 'district' => 'Test', 'state' => 'Telangana', 'is_primary' => true,
+            'address_type' => 'temporary', 'house_number' => '12', 'pincode' => '500002', 'district' => 'Test', 'state' => 'Andhra Pradesh', 'is_primary' => true,
         ])->assertCreated()->assertJsonPath('address_type', 'temporary')->json('id');
         $this->getJson("/api/citizens/{$citizen['id']}/addresses?search=500002")->assertOk()->assertJsonPath('meta.total', 1);
         $this->putJson("/api/citizens/{$citizen['id']}/addresses/{$created}", ['house_number' => '14'])->assertOk()->assertJsonPath('house_number', '14');

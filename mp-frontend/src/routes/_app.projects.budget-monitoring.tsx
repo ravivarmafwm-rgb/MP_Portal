@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Download, IndianRupee, Wallet, TrendingDown } from "lucide-react";
+import { Download, IndianRupee, Wallet, TrendingDown, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,12 +77,12 @@ function BudgetMonitoring() {
         ) : (
           <>
             <div className="grid gap-3 md:grid-cols-4">
-              {[
+              {([
                 ["Allocated", s?.allocated, IndianRupee],
                 ["Utilized", s?.utilized, Wallet],
                 ["Released", s?.released, TrendingDown],
                 ["Balance", s?.balance, IndianRupee],
-              ].map(([label, value, Icon]) => (
+              ] as Array<[string, number | undefined, LucideIcon]>).map(([label, value, Icon]) => (
                 <Card key={String(label)} className="p-5">
                   <Icon className="h-5 w-5 text-primary" />
                   <div className="mt-2 text-xs text-muted-foreground">

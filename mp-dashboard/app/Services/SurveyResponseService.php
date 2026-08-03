@@ -54,11 +54,12 @@ class SurveyResponseService
 
         $questions = $survey->questions()->orderBy('sort_order')->get();
         $answers = $data['answers'] ?? [];
-        $this->validateAnswers($questions, $answers, $files);
+        $visibleQuestions = $questions->filter(fn ($question) => $this->isQuestionVisible($question, $answers));
+        $this->validateAnswers($visibleQuestions, $answers, $files);
         $stored = [];
 
         try {
-            return DB::transaction(function () use ($survey, $data, $files, $user, $volunteer, $questions, $answers, &$stored, $ip, $agent, $collectedAt, $offline) {
+            return DB::transaction(function () use ($survey, $data, $files, $user, $volunteer, $questions, $visibleQuestions, $answers, &$stored, $ip, $agent, $collectedAt, $offline) {
                 $response = SurveyResponse::create([
                     'survey_id' => $survey->id,
                     'client_submission_id' => $data['client_submission_id'] ?? null,
@@ -79,6 +80,9 @@ class SurveyResponseService
                     'created_by' => $user->id,
                 ]);
                 foreach ($questions as $question) {
+                    if (!$visibleQuestions->contains('id', $question->id)) {
+                        continue;
+                    }
                     $attachment = null;
                     if (isset($files[$question->id]) && $files[$question->id] instanceof UploadedFile) {
                         $attachment = $files[$question->id]->storeAs("surveys/{$survey->id}/responses/{$response->id}", Str::uuid().'.'.$files[$question->id]->extension(), 'local');
@@ -113,6 +117,33 @@ class SurveyResponseService
             }
             throw $exception;
         }
+    }
+
+    /**
+     * Evaluate persisted branching rules server-side so hidden questions are
+     * never required or persisted from an untrusted client submission.
+     */
+    private function isQuestionVisible($question, array $answers): bool
+    {
+        $rules = is_array($question->branching_rules) ? $question->branching_rules : [];
+        if ($rules === []) return true;
+
+        foreach ($rules as $rule) {
+            $source = $answers[$rule['when_question_id'] ?? ''] ?? null;
+            $expected = $rule['value'] ?? null;
+            $operator = $rule['operator'] ?? 'equals';
+            $matched = match ($operator) {
+                'contains' => is_array($source) ? in_array($expected, $source, true) : str_contains((string) $source, (string) $expected),
+                'not_equals' => $source != $expected,
+                default => is_array($source) ? in_array($expected, $source, true) : (string) $source === (string) $expected,
+            };
+
+            if ($matched) {
+                return ($rule['action'] ?? 'show') !== 'hide';
+            }
+        }
+
+        return true;
     }
 
     private function validateAnswers($questions, array $answers, array $files): void

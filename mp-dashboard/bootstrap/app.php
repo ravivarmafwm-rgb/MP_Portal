@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRole::class,
             'permission' => \App\Http\Middleware\EnsurePermission::class,
+            'cache.get' => \App\Http\Middleware\CacheGetResponse::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
