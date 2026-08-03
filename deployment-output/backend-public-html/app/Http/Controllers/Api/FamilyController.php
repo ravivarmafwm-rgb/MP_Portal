@@ -43,10 +43,10 @@ class FamilyController extends Controller
         ]]);
     }
 
-    public function show(Family $family): JsonResponse
+    public function show(Request $request, Family $family): JsonResponse
     {
         $this->authorize('view', $family);
-        return response()->json((new FamilyResource($family->load(['village.mandal', 'ward', 'pollingBooth', 'familyMembers.citizen', 'activityLogs.user:id,name'])))->resolve($request));
+        return response()->json((new FamilyResource($family->load(['village.mandal', 'ward', 'pollingBooth', 'familyMembers.citizen', 'activityLogs.user:id,name', 'documents', 'schemeBeneficiaries.scheme'])->loadSum('schemeBeneficiaries', 'total_benefit_received')))->resolve($request));
     }
 
     public function store(StoreFamilyRequest $request): JsonResponse
@@ -84,11 +84,13 @@ class FamilyController extends Controller
     public function removeMember(Request $request, Family $family, FamilyMember $member): JsonResponse
     {
         $this->authorize('update', $family);
+        abort_unless($member->family_id === $family->id, 404);
         return response()->json($this->service->removeMember($family, $member, $request->user(), $request));
     }
 
     public function updateMember(SaveFamilyMemberRequest $request, Family $family, FamilyMember $member): JsonResponse
     {
+        abort_unless($member->family_id === $family->id, 404);
         return response()->json($this->service->updateMember($family, $member, $request->validated(), $request->user(), $request));
     }
 }

@@ -25,6 +25,9 @@ use App\Http\Resources\CitizenSelfResource;
 use App\Http\Resources\CitizenResource;
 use App\Http\Resources\CitizenAddressResource;
 use App\Models\PollingBooth;
+use App\Models\Volunteer;
+use App\Models\SchemeBeneficiary;
+use App\Models\Document;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -102,7 +105,7 @@ class CitizenController extends Controller
         ]);
     }
 
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
         $citizen = Citizen::with([
             'addresses.village.mandal',
@@ -110,9 +113,10 @@ class CitizenController extends Controller
             'families.village.mandal',
             'families.familyMembers.citizen',
             'grievances.category',
-            'schemeApplications.scheme.department',
+            'schemeApplications.scheme',
             'surveyResponses.survey',
             'appointments' => fn ($query) => $query->latest('requested_date'),
+            'volunteerVisits' => fn ($query) => $query->with('volunteer:id,volunteer_id,first_name,last_name')->latest('scheduled_at'),
             'interactions',
             'documents.documentCategory',
             'activityLogs' => fn ($query) => $query->with('user:id,name')->latest(),
@@ -298,6 +302,96 @@ class CitizenController extends Controller
             'female' => (clone $base)->whereRaw('LOWER(gender) = ?', ['female'])->count(),
             'voters' => (clone $base)->where('is_voter', true)->count(),
             'this_month' => (clone $base)->where('created_at', '>=', now()->startOfMonth())->count(),
+        ]);
+    }
+
+    public function dashboard(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Citizen::class);
+        $citizens = Citizen::query();
+        app(GeographicScopeService::class)->apply($citizens, $request->user());
+        $ids = (clone $citizens)->select('id');
+        $count = fn (callable $callback): int => (int) $callback(clone $citizens)->count();
+        $total = (clone $citizens)->count();
+        $families = Family::query();
+        app(GeographicScopeService::class)->apply($families, $request->user());
+        $activeBeneficiaries = SchemeBeneficiary::where('status', 'active')->where(function ($q) use ($ids, $families): void {
+            $q->whereIn('citizen_id', $ids)->orWhereIn('family_id', (clone $families)->select('id'));
+        })->count();
+
+        $monthExpression = DB::connection()->getDriverName() === 'pgsql'
+            ? "to_char(date_trunc('month', created_at), 'YYYY-MM')"
+            : "strftime('%Y-%m', created_at)";
+        $monthly = (clone $citizens)->where('created_at', '>=', now()->subMonths(11)->startOfMonth())
+            ->selectRaw("{$monthExpression} as month, count(*) as count")
+            ->groupBy('month')->orderBy('month')->get()->map(fn ($r) => ['month' => $r->month, 'count' => (int) $r->count]);
+        $breakdown = function (string $column) use ($citizens): array {
+            return (clone $citizens)->whereNotNull($column)->where($column, '<>', '')
+                ->select($column)->selectRaw('count(*) as count')->groupBy($column)->orderByDesc('count')->limit(12)
+                ->get()->map(fn ($r) => ['label' => (string) $r->{$column}, 'count' => (int) $r->count])->all();
+        };
+        $age = [
+            ['label' => 'Children', 'count' => $count(fn ($q) => $q->where('date_of_birth', '>', now()->subYears(18)))],
+            ['label' => 'Youth', 'count' => $count(fn ($q) => $q->whereBetween('date_of_birth', [now()->subYears(35), now()->subYears(18)]))],
+            ['label' => 'Working age', 'count' => $count(fn ($q) => $q->whereBetween('date_of_birth', [now()->subYears(60), now()->subYears(35)]))],
+            ['label' => 'Senior citizens', 'count' => $count(fn ($q) => $q->where('date_of_birth', '<', now()->subYears(60)))],
+        ];
+        $geography = DB::table('citizen_addresses as ca')->whereIn('ca.citizen_id', $ids)
+            ->leftJoin('villages as v', 'v.id', '=', 'ca.village_id')
+            ->leftJoin('mandals as m', 'm.id', '=', 'v.mandal_id')
+            ->leftJoin('assembly_constituencies as a', 'a.id', '=', 'm.assembly_constituency_id')
+            ->leftJoin('wards as w', 'w.id', '=', 'ca.ward_id')
+            ->leftJoin('polling_booths as b', 'b.id', '=', 'ca.polling_booth_id')
+            ->where('ca.is_primary', true)->selectRaw('a.name as assembly, m.name as mandal, v.name as village, w.name as ward, b.name as booth, count(*) as citizens')
+            ->groupBy('a.name', 'm.name', 'v.name', 'w.name', 'b.name')->orderByDesc('citizens')->limit(100)->get();
+        $recentCitizens = (clone $citizens)->latest()->limit(8)->get(['id', 'unique_id', 'first_name', 'last_name', 'created_at'])
+            ->map(fn (Citizen $citizen) => ['id' => $citizen->id, 'unique_id' => $citizen->unique_id, 'name' => trim("{$citizen->first_name} {$citizen->last_name}"), 'created_at' => $citizen->created_at?->toIso8601String()]);
+        $recentActivity = ActivityLog::where(function ($query) use ($ids, $families): void {
+            $query->where(fn ($q) => $q->where('loggable_type', Citizen::class)->whereIn('loggable_id', $ids))
+                ->orWhere(fn ($q) => $q->where('loggable_type', Family::class)->whereIn('loggable_id', (clone $families)->select('id')));
+        })->latest()->limit(12)->get(['id', 'action', 'description', 'module', 'created_at'])
+            ->map(fn (ActivityLog $log) => ['id' => $log->id, 'action' => $log->action, 'description' => $log->description, 'module' => $log->module, 'created_at' => $log->created_at?->toIso8601String()]);
+        $recentDocuments = Document::where('documentable_type', Citizen::class)->whereIn('documentable_id', $ids)->latest()->limit(8)
+            ->get(['id', 'title', 'file_name', 'created_at'])->map(fn (Document $document) => ['id' => $document->id, 'title' => $document->title ?: $document->file_name, 'created_at' => $document->created_at?->toIso8601String()]);
+        $recentEnrollments = SchemeBeneficiary::where('status', 'active')->whereIn('citizen_id', $ids)->with('scheme:id,name')->latest()->limit(8)
+            ->get(['id', 'scheme_id', 'beneficiary_name', 'enrollment_date'])->map(fn (SchemeBeneficiary $beneficiary) => ['id' => $beneficiary->id, 'scheme' => $beneficiary->scheme?->name, 'beneficiary_name' => $beneficiary->beneficiary_name, 'enrollment_date' => $beneficiary->enrollment_date?->toDateString()]);
+        $familyDistribution = (clone $families)->selectRaw('members_count, count(*) as count')->groupBy('members_count')->orderBy('members_count')->get()
+            ->map(fn ($row) => ['label' => ((int) $row->members_count).' members', 'count' => (int) $row->count]);
+
+        return response()->json([
+            'summary' => [
+                'total_citizens' => $total,
+                'male' => $count(fn ($q) => $q->whereRaw('lower(gender) = ?', ['male'])),
+                'female' => $count(fn ($q) => $q->whereRaw('lower(gender) = ?', ['female'])),
+                'senior_citizens' => $age[3]['count'], 'youth' => $age[1]['count'], 'children' => $age[0]['count'],
+                'families' => $families->count(),
+                'volunteers_assigned' => Volunteer::whereIn('citizen_id', $ids)->where('status', 'active')->count(),
+                'active_beneficiaries' => $activeBeneficiaries,
+                'disabled_citizens' => $count(fn ($q) => $q->whereNotNull('disability_status')->whereNotIn('disability_status', ['none', ''])),
+                'widows' => $count(fn ($q) => $q->whereRaw('lower(marital_status) = ?', ['widowed'])),
+                'pension_holders' => SchemeBeneficiary::whereIn('citizen_id', $ids)->whereHas('scheme', fn ($q) => $q->whereRaw('LOWER(name) LIKE ?', ['%pension%']))->count(),
+            ],
+            'age_distribution' => $age,
+            'gender_distribution' => $breakdown('gender'),
+            'occupation_distribution' => $breakdown('occupation'),
+            'education_distribution' => $breakdown('education'),
+            'scheme_coverage' => SchemeBeneficiary::whereIn('citizen_id', $ids)->with('scheme:id,name')->select('scheme_id')->selectRaw('count(*) as count')->groupBy('scheme_id')->orderByDesc('count')->limit(12)->get()->map(fn ($r) => ['label' => $r->scheme?->name ?? 'Unknown', 'count' => (int) $r->count]),
+            'monthly_registrations' => $monthly,
+            'family_distribution' => $familyDistribution,
+            'geographic_distribution' => $geography,
+            'recent_citizens' => $recentCitizens,
+            'recent_activity' => $recentActivity,
+            'recent_documents' => $recentDocuments,
+            'recent_scheme_enrollments' => $recentEnrollments,
+            'alerts' => [
+                'duplicate_mobile' => Citizen::whereIn('id', $ids)->whereNotNull('mobile_number')->where('mobile_number', '<>', '')->select('mobile_number')->groupBy('mobile_number')->havingRaw('count(*) > 1')->count(),
+                'duplicate_voter_id' => Citizen::whereIn('id', $ids)->whereNotNull('voter_id')->where('voter_id', '<>', '')->select('voter_id')->groupBy('voter_id')->havingRaw('count(*) > 1')->count(),
+                'missing_aadhaar' => $count(fn ($q) => $q->whereNull('aadhaar_hash')),
+                'missing_voter_id' => $count(fn ($q) => $q->whereNull('voter_id')->orWhere('voter_id', '')),
+                'missing_address' => $total - CitizenAddress::whereIn('citizen_id', $ids)->distinct('citizen_id')->count('citizen_id'),
+                'incomplete_profiles' => $count(fn ($q) => $q->where(fn ($x) => $x->whereNull('mobile_number')->orWhereNull('date_of_birth')->orWhereNull('occupation'))),
+            ],
+            'generated_at' => now()->toIso8601String(),
         ]);
     }
 

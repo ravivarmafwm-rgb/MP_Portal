@@ -1,0 +1,1 @@
+import{r as e}from"./useRouter-D7BlScjs.js";import{n as t}from"./index-DNB7zWpt.js";import{t as n}from"./AnalyticsReportPage-DWCWVQmB.js";var r=e();function i(){return(0,r.jsx)(n,{report:t.useLoaderData(),title:`Assembly Analytics`,description:`Assembly-wise citizens, service applications, grievances, projects and budget utilization.`})}export{i as component};

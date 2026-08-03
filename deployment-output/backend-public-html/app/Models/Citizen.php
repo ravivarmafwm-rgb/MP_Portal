@@ -123,6 +123,11 @@ class Citizen extends Model
         return $this->hasMany(Appointment::class);
     }
 
+    public function volunteerVisits()
+    {
+        return $this->hasMany(VolunteerVisit::class);
+    }
+
     public function documents()
     {
         return $this->morphMany(Document::class, 'documentable');

@@ -1,0 +1,1 @@
+import{r as e}from"./useRouter-D7BlScjs.js";import{o as t}from"./index-DNB7zWpt.js";import{t as n}from"./AnalyticsReportPage-DWCWVQmB.js";var r=e();function i(){return(0,r.jsx)(n,{report:t.useLoaderData(),title:`Village Analytics`,description:`Village-level citizen, grievance, scheme, project, volunteer and booth metrics.`})}export{i as component};
