@@ -113,6 +113,34 @@ class FamilyWorkflowTest extends TestCase
         $this->deleteJson("/api/families/{$first['id']}/members/{$member->id}")->assertNotFound();
     }
 
+    public function test_family_first_relationship_and_citizen_self_service_are_exposed(): void
+    {
+        [$village] = $this->villages();
+        $admin = $this->superAdmin();
+        $head = $this->citizen('CIT-FIRST-1', 'Family', true, $village);
+        $member = $this->citizen('CIT-FIRST-2', 'Member', false, $village);
+        Sanctum::actingAs($admin);
+        $family = $this->postJson('/api/families', [
+            'head_citizen_id' => $head->id,
+            'village_id' => $village->id,
+            'economic_status' => 'middle',
+            'is_bpl' => false,
+        ])->assertCreated()->json();
+        $this->postJson("/api/families/{$family['id']}/members", [
+            'citizen_id' => $member->id,
+            'relationship_with_head' => 'Son',
+        ])->assertCreated();
+        $this->assertDatabaseHas('citizens', ['id' => $head->id, 'family_id' => $family['id'], 'relationship_to_head' => 'Self']);
+        $this->assertDatabaseHas('citizens', ['id' => $member->id, 'family_id' => $family['id'], 'relationship_to_head' => 'Son']);
+        $this->assertDatabaseHas('families', ['id' => $family['id'], 'head_citizen_id' => $head->id]);
+
+        $role = Role::create(['name' => 'Citizen', 'slug' => 'citizen', 'level' => 11, 'is_active' => true]);
+        $citizenUser = User::factory()->create(['role_id' => $role->id, 'citizen_id' => $head->id]);
+        Sanctum::actingAs($citizenUser);
+        $this->getJson('/api/citizen/family')->assertOk()->assertJsonPath('family_id', $family['family_id']);
+        $this->getJson("/api/families/{$family['id']}/dashboard")->assertForbidden();
+    }
+
     private function citizen(string $id, string $firstName, bool $voter, Village $village): Citizen
     {
         $citizen = Citizen::create([

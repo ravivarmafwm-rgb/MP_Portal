@@ -37,20 +37,32 @@ class CitizenEnrollmentService
         $citizen = DB::transaction(function () use ($data, $actor, $request) {
             $profile = collect($data)->only([
                 'first_name', 'last_name', 'middle_name', 'date_of_birth', 'gender',
-                'mobile_number', 'aadhaar_number', 'voter_id', 'occupation', 'education',
-                'marital_status', 'father_name', 'mother_name', 'blood_group', 'email', 'is_voter',
+                'mobile_number', 'alternate_mobile', 'aadhaar_number', 'voter_id',
+                'occupation', 'education', 'marital_status', 'father_name', 'mother_name',
+                'spouse_name', 'blood_group', 'email', 'is_voter', 'voter_status',
+                'disability_status', 'disability_details',
             ])->all();
             $citizen = Citizen::create($profile + [
                 'unique_id' => 'CIT'.strtoupper(Str::random(8)),
+                'family_id' => $data['family_id'] ?? null,
+                'relationship_to_head' => $data['relationship_with_head'] ?? null,
                 'created_by' => $actor->id,
             ]);
             CitizenAddress::create([
-                'citizen_id' => $citizen->id, 'address_type' => 'permanent',
-                'village_id' => $data['village_id'], 'ward_id' => $data['ward_id'] ?? null,
+                'citizen_id'       => $citizen->id,
+                'address_type'     => 'permanent',
+                'village_id'       => $data['village_id'],
+                'ward_id'          => $data['ward_id'] ?? null,
                 'polling_booth_id' => $data['polling_booth_id'] ?? null,
-                'house_number' => $data['house_number'] ?? null, 'street' => $data['street'] ?? null,
-                'pincode' => $data['pincode'], 'district' => $data['district'], 'state' => $data['state'],
-                'is_primary' => true, 'created_by' => $actor->id,
+                'house_number'     => $data['house_number'] ?? null,
+                'street'           => $data['street'] ?? null,
+                'locality'         => $data['locality'] ?? null,
+                'landmark'         => $data['landmark'] ?? null,
+                'pincode'          => $data['pincode'],
+                'district'         => $data['district'],
+                'state'            => $data['state'],
+                'is_primary'       => true,
+                'created_by'       => $actor->id,
             ]);
             if (!empty($data['family_id'])) {
                 FamilyMember::create([

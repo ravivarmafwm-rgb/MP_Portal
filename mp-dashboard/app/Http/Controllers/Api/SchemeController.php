@@ -165,12 +165,18 @@ class SchemeController extends Controller
         abort_unless($request->user()->citizen_id, 409, 'This account is not linked to a citizen record.');
         return response()->json([
             'data' => SchemeApplication::query()
-                ->where('citizen_id', $request->user()->citizen_id)
+                ->where(function ($query) use ($request) {
+                    $query->where('citizen_id', $request->user()->citizen_id);
+                    $familyId = \App\Models\Citizen::whereKey($request->user()->citizen_id)->value('family_id');
+                    if ($familyId && \App\Models\Family::whereKey($familyId)->where('head_citizen_id', $request->user()->citizen_id)->exists()) {
+                        $query->orWhere('family_id', $familyId);
+                    }
+                })
                 ->with([
                     'scheme.department', 'scheme.requiredDocuments.documentCategory',
                     'beneficiaries', 'benefitDisbursements',
                     'documentReviews.requirement.documentCategory',
-                    'documentReviews.document.documentCategory',
+                    'documentReviews.document.documentCategory', 'createdBy:id,name', 'submittedBy:id,name',
                 ])
                 ->with(['activityLogs' => fn ($query) => $query->latest()->with('user:id,name')])
                 ->latest('application_date')
@@ -183,7 +189,41 @@ class SchemeController extends Controller
         SchemeEligibilityService $eligibilityService
     ): JsonResponse {
         abort_unless($request->user()->citizen_id, 409, 'This account is not linked to a citizen record.');
-        $citizen = $request->user()->citizenProfile()->firstOrFail();
+        $citizen = $this->resolveApplicationCitizen($request);
+        return $this->createApplicationForCitizen($request, $citizen, $eligibilityService, 'citizen');
+    }
+
+    public function applyForCitizen(
+        StoreCitizenSchemeApplicationRequest $request,
+        SchemeEligibilityService $eligibilityService
+    ): JsonResponse {
+        abort_unless($request->user()->hasRole('volunteer'), 403);
+        $citizen = $this->resolveApplicationCitizen($request);
+        abort_unless(app(GeographicScopeService::class)->allows($request->user(), $citizen), 403, 'This citizen is outside your assigned geography.');
+        return $this->createApplicationForCitizen($request, $citizen, $eligibilityService, 'volunteer');
+    }
+
+    private function resolveApplicationCitizen(Request $request): \App\Models\Citizen
+    {
+        $actor = $request->user();
+        $targetId = $request->validated('target_citizen_id') ?: $actor->citizen_id;
+        $citizen = \App\Models\Citizen::with('family')->findOrFail($targetId);
+        if ($actor->hasRole('citizen')) {
+            $isSelf = $actor->citizen_id === $citizen->id;
+            $isFamilyHead = $actor->citizen_id !== null && $citizen->family_id !== null
+                && $citizen->family_id === \App\Models\Citizen::whereKey($actor->citizen_id)->value('family_id')
+                && \App\Models\Family::whereKey($citizen->family_id)->where('head_citizen_id', $actor->citizen_id)->exists();
+            abort_unless($isSelf || $isFamilyHead, 403, 'Citizens can submit only for themselves or their own family members as the family head.');
+        }
+        return $citizen;
+    }
+
+    private function createApplicationForCitizen(
+        StoreCitizenSchemeApplicationRequest $request,
+        \App\Models\Citizen $citizen,
+        SchemeEligibilityService $eligibilityService,
+        string $source
+    ): JsonResponse {
         abort_unless($citizen->mobile_number, 409, 'A verified mobile number is required before applying.');
         $address = $citizen->addresses()->orderByDesc('is_primary')->latest()->first();
         abort_unless($address?->village_id, 409, 'A verified village address is required before applying.');
@@ -198,21 +238,22 @@ class SchemeController extends Controller
         abort_unless($eligibility['eligible'], 422, 'The verified citizen profile does not satisfy all mandatory eligibility rules.');
         $data = $request->validated();
 
-        $application = DB::transaction(function () use ($request, $citizen, $address, $scheme, $eligibility, $data) {
+        $application = DB::transaction(function () use ($request, $citizen, $address, $scheme, $eligibility, $data, $source) {
             $application = SchemeApplication::create([
                 'application_number' => 'SCH'.now()->format('ymd').strtoupper(Str::random(6)),
-                'scheme_id' => $scheme->id, 'citizen_id' => $citizen->id,
+                'scheme_id' => $scheme->id, 'citizen_id' => $citizen->id, 'family_id' => $citizen->family_id,
                 'applicant_name' => trim("{$citizen->first_name} {$citizen->last_name}"),
                 'applicant_mobile' => $citizen->mobile_number, 'applicant_email' => $citizen->email,
                 'village_id' => $address->village_id, 'ward_id' => $address->ward_id,
                 'status' => 'submitted', 'application_date' => today(),
                 'remarks' => $data['remarks'] ?? null,
                 'created_by' => $request->user()->id,
+                'submitted_by' => $request->user()->id, 'application_source' => $source,
             ]);
             ActivityLog::create([
                 'user_id' => $request->user()->id, 'loggable_type' => SchemeApplication::class,
                 'loggable_id' => $application->id, 'action' => 'application_submitted',
-                'module' => 'schemes', 'description' => "Citizen submitted {$application->application_number}.",
+                'module' => 'schemes', 'description' => ucfirst($source)." submitted {$application->application_number} for {$citizen->unique_id}.",
                 'new_values' => ['scheme_id' => $scheme->id, 'eligibility' => $eligibility],
                 'ip_address' => $request->ip(), 'user_agent' => $request->userAgent(),
             ]);
@@ -228,7 +269,7 @@ class SchemeController extends Controller
                 'scheme', "/schemes/application-detail?id={$application->id}", $application
             ));
 
-        return response()->json($application->fresh(['scheme.department']), 201);
+        return response()->json($application->fresh(['scheme.department', 'citizen', 'createdBy:id,name', 'submittedBy:id,name']), 201);
     }
 
     public function reviewApplication(

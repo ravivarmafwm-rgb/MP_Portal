@@ -43,6 +43,11 @@ class SaveSurveyRequest extends FormRequest
             'questions.*.validation_rule' => ['nullable', 'string', 'max:255'],
             'questions.*.help_text' => ['nullable', 'string', 'max:1000'],
             'questions.*.category' => ['nullable', 'string', 'max:100'],
+            'questions.*.branching_rules' => ['nullable', 'array', 'max:20'],
+            'questions.*.branching_rules.*.when_question_id' => ['required', 'uuid'],
+            'questions.*.branching_rules.*.operator' => ['required', Rule::in(['equals', 'not_equals', 'contains'])],
+            'questions.*.branching_rules.*.value' => ['required', 'string', 'max:255'],
+            'questions.*.branching_rules.*.action' => ['required', Rule::in(['show', 'hide', 'skip_to'])],
         ];
     }
 

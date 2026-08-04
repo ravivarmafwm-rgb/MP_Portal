@@ -11,7 +11,12 @@ class SchemeApplicationPolicy
     public function view(User $user, SchemeApplication $application): bool
     {
         if ($user->hasRole('citizen')) {
-            return $user->citizen_id !== null && $application->citizen_id === $user->citizen_id;
+            if ($user->citizen_id === null) return false;
+            if ($application->citizen_id === $user->citizen_id) return true;
+            $familyId = \App\Models\Citizen::whereKey($user->citizen_id)->value('family_id');
+            return $familyId !== null
+                && \App\Models\Family::whereKey($familyId)->value('head_citizen_id') === $user->citizen_id
+                && $application->family_id === $familyId;
         }
 
         return $user->hasPermission('schemes.view')

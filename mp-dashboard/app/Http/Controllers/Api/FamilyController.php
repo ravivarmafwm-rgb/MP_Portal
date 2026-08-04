@@ -14,6 +14,7 @@ use App\Http\Resources\FamilyResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Http\Resources\CitizenResource;
 
 class FamilyController extends Controller
 {
@@ -46,7 +47,47 @@ class FamilyController extends Controller
     public function show(Request $request, Family $family): JsonResponse
     {
         $this->authorize('view', $family);
-        return response()->json((new FamilyResource($family->load(['village.mandal', 'ward', 'pollingBooth', 'familyMembers.citizen', 'activityLogs.user:id,name', 'documents', 'schemeBeneficiaries.scheme'])->loadSum('schemeBeneficiaries', 'total_benefit_received')))->resolve($request));
+        return response()->json((new FamilyResource($family->load(['village.mandal', 'ward', 'pollingBooth', 'head', 'citizens', 'familyMembers.citizen', 'activityLogs.user:id,name', 'documents', 'schemeBeneficiaries.scheme'])->loadSum('schemeBeneficiaries', 'total_benefit_received')))->resolve($request));
+    }
+
+    public function dashboard(Request $request, Family $family): JsonResponse
+    {
+        $this->authorize('view', $family);
+        $members = $family->citizens()->with(['documents', 'schemeBeneficiaries.scheme', 'addresses'])->get();
+        $age = fn ($citizen) => $citizen->date_of_birth ? $citizen->date_of_birth->age : null;
+        $count = fn (callable $predicate) => $members->filter($predicate)->count();
+        return response()->json([
+            'data' => [
+                'family' => (new FamilyResource($family->load(['head', 'village.mandal', 'ward', 'pollingBooth', 'documents', 'activityLogs.user:id,name'])))->resolve($request),
+                'summary' => [
+                    'total_members' => $members->count(),
+                    'male' => $count(fn ($c) => strtolower((string) $c->gender) === 'male'),
+                    'female' => $count(fn ($c) => strtolower((string) $c->gender) === 'female'),
+                    'children' => $count(fn ($c) => ($age($c) ?? 99) < 18),
+                    'senior_citizens' => $count(fn ($c) => ($age($c) ?? 0) >= 60),
+                    'disabled' => $count(fn ($c) => $c->disability_status && $c->disability_status !== 'none'),
+                    'widows' => $count(fn ($c) => strtolower((string) $c->marital_status) === 'widowed' && strtolower((string) $c->gender) === 'female'),
+                    'students' => $count(fn ($c) => str_contains(strtolower((string) $c->occupation), 'student')),
+                    'employees' => $count(fn ($c) => in_array(strtolower((string) $c->occupation), ['employee', 'government employee', 'private employee'], true)),
+                    'farmers' => $count(fn ($c) => str_contains(strtolower((string) $c->occupation), 'farm')),
+                'pension_holders' => $members->filter(fn ($c) => $c->schemeBeneficiaries->contains(fn ($b) => str_contains(strtolower((string) ($b->scheme?->name ?? '')), 'pension')))->count(),
+                    'beneficiaries' => $members->filter(fn ($c) => $c->schemeBeneficiaries->isNotEmpty())->count(),
+                ],
+                'members' => CitizenResource::collection($members)->resolve($request),
+                'recent_activity' => $family->activityLogs()->with('user:id,name')->latest()->limit(20)->get(),
+            ],
+        ]);
+    }
+
+    public function myFamily(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->hasRole('citizen') && $request->user()->citizen_id, 403);
+        $citizen = \App\Models\Citizen::findOrFail($request->user()->citizen_id);
+        $family = $citizen->family;
+        abort_unless($family, 404, 'Your account is not linked to a family.');
+        $this->authorize('view', $family);
+        $family->load(['head', 'citizens.addresses', 'citizens.documents', 'citizens.schemeBeneficiaries.scheme', 'familyMembers.citizen', 'documents']);
+        return response()->json((new FamilyResource($family))->resolve($request));
     }
 
     public function store(StoreFamilyRequest $request): JsonResponse

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   ClipboardList,
@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import {
   fetchMyCitizen,
+  fetchMyFamily,
   fetchMyGrievances,
   fetchMySchemeApplications,
   getApiErrorMessage,
@@ -41,6 +42,10 @@ function CitizenPortalPage() {
   const schemeApplications = useQuery({
     queryKey: ["my-scheme-applications"],
     queryFn: fetchMySchemeApplications,
+  });
+  const family = useQuery({
+    queryKey: ["my-family"],
+    queryFn: fetchMyFamily,
   });
 
   return (
@@ -78,6 +83,30 @@ function CitizenPortalPage() {
             </div>
           </Card>
         )}
+        {family.isLoading ? (
+          <Skeleton className="h-44 w-full" />
+        ) : family.data ? (
+          <Card className="p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="font-display text-lg font-bold">My Family</h3>
+                <p className="text-sm text-muted-foreground">{family.data.family_id} · Head: {family.data.head_of_family_name}</p>
+              </div>
+              <Badge variant="outline">{family.data.members_count} members</Badge>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {family.data.family_members?.map((member) => (
+                <div key={member.id} className="rounded-lg border p-3 text-sm">
+                  <p className="font-medium">{member.citizen.first_name} {member.citizen.last_name}</p>
+                  <p className="text-xs text-muted-foreground">{member.relationship_with_head} · {member.citizen.gender}</p>
+                  <Link className="mt-2 inline-block text-xs text-primary hover:underline" to="/citizens/profile" search={{ id: member.citizen.id }}>View profile</Link>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : family.isError ? (
+          <Card className="border-dashed p-6 text-sm text-muted-foreground">Your account is not linked to a family yet.</Card>
+        ) : null}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="p-6">
             <FileBadge className="h-8 w-8 text-primary mb-3" />
@@ -217,6 +246,12 @@ function CitizenPortalPage() {
                       <p className="mt-1 text-xs text-destructive">
                         {application.rejection_reason}
                       </p>
+                    )}
+                    {application.pending_reason && (
+                      <p className="mt-2 text-sm">Pending reason: {application.pending_reason}</p>
+                    )}
+                    {application.application_source === "volunteer" && (
+                      <p className="mt-1 text-xs text-muted-foreground">Submitted with volunteer assistance.</p>
                     )}
                     {application.benefit_disbursements?.map((benefit) => (
                       <div

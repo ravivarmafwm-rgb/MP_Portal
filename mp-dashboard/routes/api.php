@@ -69,6 +69,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Citizens
     Route::get('/citizen/me', [CitizenController::class, 'me'])->middleware('role:citizen');
+    Route::get('/citizen/family', [FamilyController::class, 'myFamily'])->middleware('role:citizen');
     Route::get('/citizen/grievances', [GrievanceController::class, 'myGrievances'])->middleware('role:citizen');
     Route::get('/citizen/grievance-categories', [GrievanceController::class, 'citizenCategories'])->middleware('role:citizen');
     Route::post('/citizen/grievances', [GrievanceController::class, 'storeCitizenGrievance'])->middleware(['role:citizen', 'throttle:10,1']);
@@ -103,6 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/families', [FamilyController::class, 'index'])->middleware('permission:families.manage');
     Route::post('/families', [FamilyController::class, 'store'])->middleware('permission:families.manage');
     Route::get('/families/{family}', [FamilyController::class, 'show'])->middleware('permission:families.manage');
+    Route::get('/families/{family}/dashboard', [FamilyController::class, 'dashboard'])->middleware('permission:families.manage');
     Route::put('/families/{family}', [FamilyController::class, 'update'])->middleware('permission:families.manage');
     Route::delete('/families/{family}', [FamilyController::class, 'destroy'])->middleware('permission:families.manage');
     Route::post('/families/{family}/members', [FamilyController::class, 'addMember'])->middleware('permission:families.manage');
@@ -201,6 +203,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/citizen/scheme-applications', [SchemeController::class, 'myApplications'])->middleware('role:citizen');
     Route::post('/citizen/scheme-applications', [SchemeController::class, 'applyAsCitizen'])->middleware(['role:citizen', 'throttle:10,1']);
     Route::post('/citizen/scheme-applications/{application}/documents', [SchemeController::class, 'uploadApplicationDocument'])->middleware(['role:citizen', 'throttle:20,1']);
+    Route::post('/schemes/applications/assisted', [SchemeController::class, 'applyForCitizen'])->middleware(['permission:schemes.apply', 'throttle:20,1']);
+    Route::post('/schemes/applications/{application}/documents', [SchemeController::class, 'uploadApplicationDocument'])->middleware(['permission:schemes.view', 'throttle:20,1']);
     Route::post('/citizen/scheme-applications/{application}/withdraw', [SchemeController::class, 'withdrawApplication'])->middleware(['role:citizen', 'throttle:10,1']);
     Route::post('/schemes/application-document-reviews/{documentReview}', [SchemeController::class, 'reviewApplicationDocument'])->middleware('permission:schemes.manage');
 

@@ -15,6 +15,7 @@ class Family extends Model
 
     protected $fillable = [
         'family_id',
+        'head_citizen_id',
         'village_id',
         'ward_id',
         'polling_booth_id',
@@ -64,7 +65,12 @@ class Family extends Model
 
     public function citizens()
     {
-        return $this->hasManyThrough(Citizen::class, FamilyMember::class);
+        return $this->hasMany(Citizen::class);
+    }
+
+    public function head()
+    {
+        return $this->belongsTo(Citizen::class, 'head_citizen_id');
     }
 
     public function schemeApplications()

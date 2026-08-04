@@ -18,7 +18,7 @@ import {
   type SchemeApplicationRecord,
 } from "@/lib/api";
 
-type Action = "start_review" | "approve" | "reject";
+type Action = "start_review" | "mark_pending" | "approve" | "reject";
 
 export function SchemeApplicationReviewActions({
   application,
@@ -37,6 +37,7 @@ export function SchemeApplicationReviewActions({
         action: action!,
         remarks: remarks || undefined,
         rejection_reason: action === "reject" ? reason : undefined,
+        pending_reason: action === "mark_pending" ? reason : undefined,
         sanctioned_amount: action === "approve" ? Number(amount) : undefined,
         sanction_order_number: action === "approve" ? orderNumber : undefined,
       }),
@@ -66,6 +67,7 @@ export function SchemeApplicationReviewActions({
       ? [
           { action: "approve", label: "Approve" },
           { action: "reject", label: "Reject" },
+          { action: "mark_pending", label: "Return to pending" },
         ]
       : [];
   if (!options.length) return null;
@@ -141,6 +143,12 @@ export function SchemeApplicationReviewActions({
                 />
               </div>
             )}
+            {action === "mark_pending" && (
+              <div>
+                <Label htmlFor="pending-reason">Pending reason</Label>
+                <Textarea id="pending-reason" required minLength={10} maxLength={3000} value={reason} onChange={(event) => setReason(event.target.value)} />
+              </div>
+            )}
             <div>
               <Label htmlFor="review-remarks">Review remarks</Label>
               <Textarea
@@ -155,7 +163,8 @@ export function SchemeApplicationReviewActions({
               disabled={
                 mutation.isPending ||
                 (action === "approve" && (!amount || !orderNumber)) ||
-                (action === "reject" && reason.trim().length < 20)
+                (action === "reject" && reason.trim().length < 20) ||
+                (action === "mark_pending" && reason.trim().length < 10)
               }
             >
               {mutation.isPending ? "Saving..." : "Confirm transition"}

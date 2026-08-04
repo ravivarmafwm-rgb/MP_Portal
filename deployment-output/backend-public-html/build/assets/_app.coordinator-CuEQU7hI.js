@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-D7BlScjs.js";import{t}from"./MpCommandCenter-ayjVmsR7.js";import{t as n}from"./RoleGuard-BnsforMk.js";var r=e();function i(){return(0,r.jsx)(n,{route:`/coordinator`,children:(0,r.jsx)(t,{title:`Coordinator Command Center`})})}export{i as component};

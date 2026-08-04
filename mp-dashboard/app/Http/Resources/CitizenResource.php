@@ -37,6 +37,8 @@ class CitizenResource extends JsonResource
             'date_of_death'       => $this->date_of_death?->toDateString(),
             'addresses'           => self::whenLoaded('addresses'),
             'families'            => self::whenLoaded('families'),
+            'family'             => self::whenLoaded('family'),
+            'relationship_to_head' => $this->relationship_to_head,
             'grievances'          => self::whenLoaded('grievances'),
             'scheme_applications' => self::whenLoaded('schemeApplications'),
             'scheme_beneficiaries'=> self::whenLoaded('schemeBeneficiaries'),

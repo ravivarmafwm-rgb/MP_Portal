@@ -23,6 +23,10 @@ Required production settings
 
 Safe commands (when terminal access is available)
 - php artisan optimize:clear
+- php artisan cache:clear (clears persisted rate-limit/cache state after a verified 429)
+- php artisan config:clear
+- php artisan route:clear
+- php artisan view:clear
 - php artisan config:cache
 - php artisan route:cache
 - php artisan view:cache
@@ -40,4 +44,5 @@ Security operations
 - Restrict database access to the hosting account and rotate credentials periodically.
 - Maintain off-site backups of PostgreSQL and storage/app.
 - Review upload limits, PHP error logs, failed jobs, and authentication logs after deployment.
-- The package includes `.env` at the user's request. Review and rotate all credentials before upload; never expose it over HTTP. Do not upload tests, .git, node_modules, or source maps.
+- This emergency backend archive includes `.env` because it contains the verified runtime configuration required by the current deployment. Keep the archive private, never commit it, set restrictive permissions, rotate credentials if it is shared, and verify the included `.htaccess` denies HTTP access. Do not upload tests, .git, node_modules, or source maps.
+- Verify `/.env`, `/composer.json`, `/artisan` and `/storage/` return a denied response before opening the application to users.

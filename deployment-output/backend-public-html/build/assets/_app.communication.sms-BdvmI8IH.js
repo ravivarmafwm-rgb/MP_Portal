@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-D7BlScjs.js";import{t}from"./CommunicationChannelPage-Dsq5nFhZ.js";var n=e(),r=()=>(0,n.jsx)(t,{channel:`sms`});export{r as component};

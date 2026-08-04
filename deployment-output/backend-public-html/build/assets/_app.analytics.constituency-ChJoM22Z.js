@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-D7BlScjs.js";import{i as t}from"./index-DNB7zWpt.js";import{t as n}from"./AnalyticsReportPage-DWCWVQmB.js";var r=e();function i(){return(0,r.jsx)(n,{report:t.useLoaderData(),title:`Constituency Analytics`,description:`Top-level constituency operations, public-service demand and development expenditure.`})}export{i as component};

@@ -1,4 +1,6 @@
 <IfModule mod_rewrite.c>
+    Options -Indexes
+    DirectoryIndex index.php
     RewriteEngine On
     RewriteBase /
 

@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchVolunteerEnrolledCitizens } from "@/lib/api";
+import { VolunteerSchemeApplicationDialog } from "@/components/schemes/VolunteerSchemeApplicationDialog";
 export const Route = createFileRoute("/_app/volunteers/enrolled-citizens")({
   component: EnrolledPage,
 });
@@ -24,6 +25,7 @@ function EnrolledPage() {
       <PageHeader
         title="Volunteer-Enrolled Citizens"
         description="Citizens whose persisted creator account is linked to a volunteer."
+        actions={<VolunteerSchemeApplicationDialog />}
       />
       <div className="space-y-4 p-4 md:p-8">
         <div className="grid gap-3 sm:grid-cols-3">

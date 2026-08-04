@@ -44,6 +44,8 @@ class CitizenEnrollmentService
             ])->all();
             $citizen = Citizen::create($profile + [
                 'unique_id' => 'CIT'.strtoupper(Str::random(8)),
+                'family_id' => $data['family_id'] ?? null,
+                'relationship_to_head' => $data['relationship_with_head'] ?? null,
                 'created_by' => $actor->id,
             ]);
             CitizenAddress::create([

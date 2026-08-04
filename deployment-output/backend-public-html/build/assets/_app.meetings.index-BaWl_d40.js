@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-D7BlScjs.js";import{tt as t}from"./index-DNB7zWpt.js";var n=e(),r=()=>(0,n.jsx)(t,{to:`/meetings/dashboard`,replace:!0});export{r as component};

@@ -8,7 +8,7 @@ class StoreCitizenSchemeApplicationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('citizen') === true;
+        return $this->user()?->hasRole(['citizen', 'volunteer']) === true;
     }
 
     public function rules(): array
@@ -16,6 +16,7 @@ class StoreCitizenSchemeApplicationRequest extends FormRequest
         return [
             'scheme_id' => ['required', 'uuid', 'exists:schemes,id'],
             'remarks' => ['nullable', 'string', 'max:2000'],
+            'target_citizen_id' => ['nullable', 'uuid', 'exists:citizens,id'],
         ];
     }
 }

@@ -111,6 +111,7 @@ import { Route as AppCitizensProfileRouteImport } from './routes/_app.citizens.p
 import { Route as AppCitizensListRouteImport } from './routes/_app.citizens.list'
 import { Route as AppCitizensInteractionsRouteImport } from './routes/_app.citizens.interactions'
 import { Route as AppCitizensGrievancesRouteImport } from './routes/_app.citizens.grievances'
+import { Route as AppCitizensFamilyDashboardRouteImport } from './routes/_app.citizens.family-dashboard'
 import { Route as AppCitizensFamiliesRouteImport } from './routes/_app.citizens.families'
 import { Route as AppCitizensDocumentsRouteImport } from './routes/_app.citizens.documents'
 import { Route as AppCitizensDashboardRouteImport } from './routes/_app.citizens.dashboard'
@@ -650,6 +651,12 @@ const AppCitizensGrievancesRoute = AppCitizensGrievancesRouteImport.update({
   path: '/grievances',
   getParentRoute: () => AppCitizensRoute,
 } as any)
+const AppCitizensFamilyDashboardRoute =
+  AppCitizensFamilyDashboardRouteImport.update({
+    id: '/family-dashboard',
+    path: '/family-dashboard',
+    getParentRoute: () => AppCitizensRoute,
+  } as any)
 const AppCitizensFamiliesRoute = AppCitizensFamiliesRouteImport.update({
   id: '/families',
   path: '/families',
@@ -745,6 +752,7 @@ export interface FileRoutesByFullPath {
   '/citizens/dashboard': typeof AppCitizensDashboardRoute
   '/citizens/documents': typeof AppCitizensDocumentsRoute
   '/citizens/families': typeof AppCitizensFamiliesRoute
+  '/citizens/family-dashboard': typeof AppCitizensFamilyDashboardRoute
   '/citizens/grievances': typeof AppCitizensGrievancesRoute
   '/citizens/interactions': typeof AppCitizensInteractionsRoute
   '/citizens/list': typeof AppCitizensListRoute
@@ -849,6 +857,7 @@ export interface FileRoutesByTo {
   '/citizens/dashboard': typeof AppCitizensDashboardRoute
   '/citizens/documents': typeof AppCitizensDocumentsRoute
   '/citizens/families': typeof AppCitizensFamiliesRoute
+  '/citizens/family-dashboard': typeof AppCitizensFamilyDashboardRoute
   '/citizens/grievances': typeof AppCitizensGrievancesRoute
   '/citizens/interactions': typeof AppCitizensInteractionsRoute
   '/citizens/list': typeof AppCitizensListRoute
@@ -965,6 +974,7 @@ export interface FileRoutesById {
   '/_app/citizens/dashboard': typeof AppCitizensDashboardRoute
   '/_app/citizens/documents': typeof AppCitizensDocumentsRoute
   '/_app/citizens/families': typeof AppCitizensFamiliesRoute
+  '/_app/citizens/family-dashboard': typeof AppCitizensFamilyDashboardRoute
   '/_app/citizens/grievances': typeof AppCitizensGrievancesRoute
   '/_app/citizens/interactions': typeof AppCitizensInteractionsRoute
   '/_app/citizens/list': typeof AppCitizensListRoute
@@ -1081,6 +1091,7 @@ export interface FileRouteTypes {
     | '/citizens/dashboard'
     | '/citizens/documents'
     | '/citizens/families'
+    | '/citizens/family-dashboard'
     | '/citizens/grievances'
     | '/citizens/interactions'
     | '/citizens/list'
@@ -1185,6 +1196,7 @@ export interface FileRouteTypes {
     | '/citizens/dashboard'
     | '/citizens/documents'
     | '/citizens/families'
+    | '/citizens/family-dashboard'
     | '/citizens/grievances'
     | '/citizens/interactions'
     | '/citizens/list'
@@ -1300,6 +1312,7 @@ export interface FileRouteTypes {
     | '/_app/citizens/dashboard'
     | '/_app/citizens/documents'
     | '/_app/citizens/families'
+    | '/_app/citizens/family-dashboard'
     | '/_app/citizens/grievances'
     | '/_app/citizens/interactions'
     | '/_app/citizens/list'
@@ -2102,6 +2115,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCitizensGrievancesRouteImport
       parentRoute: typeof AppCitizensRoute
     }
+    '/_app/citizens/family-dashboard': {
+      id: '/_app/citizens/family-dashboard'
+      path: '/family-dashboard'
+      fullPath: '/citizens/family-dashboard'
+      preLoaderRoute: typeof AppCitizensFamilyDashboardRouteImport
+      parentRoute: typeof AppCitizensRoute
+    }
     '/_app/citizens/families': {
       id: '/_app/citizens/families'
       path: '/families'
@@ -2210,6 +2230,7 @@ interface AppCitizensRouteChildren {
   AppCitizensDashboardRoute: typeof AppCitizensDashboardRoute
   AppCitizensDocumentsRoute: typeof AppCitizensDocumentsRoute
   AppCitizensFamiliesRoute: typeof AppCitizensFamiliesRoute
+  AppCitizensFamilyDashboardRoute: typeof AppCitizensFamilyDashboardRoute
   AppCitizensGrievancesRoute: typeof AppCitizensGrievancesRoute
   AppCitizensInteractionsRoute: typeof AppCitizensInteractionsRoute
   AppCitizensListRoute: typeof AppCitizensListRoute
@@ -2225,6 +2246,7 @@ const AppCitizensRouteChildren: AppCitizensRouteChildren = {
   AppCitizensDashboardRoute: AppCitizensDashboardRoute,
   AppCitizensDocumentsRoute: AppCitizensDocumentsRoute,
   AppCitizensFamiliesRoute: AppCitizensFamiliesRoute,
+  AppCitizensFamilyDashboardRoute: AppCitizensFamilyDashboardRoute,
   AppCitizensGrievancesRoute: AppCitizensGrievancesRoute,
   AppCitizensInteractionsRoute: AppCitizensInteractionsRoute,
   AppCitizensListRoute: AppCitizensListRoute,

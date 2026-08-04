@@ -123,6 +123,23 @@ export interface MyCitizenRecord {
   email?: string | null;
   aadhaar_masked?: string | null;
   voter_id?: string | null;
+  family_id?: string | null;
+  relationship_to_head?: string | null;
+  family?: {
+    id: string;
+    family_id: string;
+    head_citizen_id?: string | null;
+    head_of_family_name: string;
+    members_count: number;
+    members: Array<{
+      id: string;
+      unique_id: string;
+      name: string;
+      relationship_to_head?: string | null;
+      gender: string;
+      date_of_birth?: string | null;
+    }>;
+  } | null;
   primary_address?: {
     house_number?: string | null;
     street?: string | null;
@@ -236,6 +253,11 @@ export async function updateMyProfile(data: { name: string; email: string }) {
   const res = await api.put("/user/profile", data);
   return res.data as AuthUser;
 }
+
+export async function fetchMyFamily() {
+  const res = await api.get("/citizen/family");
+  return res.data as FamilyRecord;
+}
 export type UserPreferences = {
   theme: "light" | "dark" | "system";
   language: string;
@@ -308,9 +330,19 @@ export async function fetchVolunteerDashboardStats() {
 }
 
 // ── Citizens ─────────────────────────────────────────────────────────────────
+export interface CitizenSearchRecord {
+  [key: string]: unknown;
+  id: string;
+  unique_id: string;
+  first_name: string;
+  middle_name?: string | null;
+  last_name: string;
+  mobile_number?: string | null;
+}
+
 export async function fetchCitizens(params?: Record<string, string | number>) {
   const res = await api.get("/citizens", { params });
-  return res.data;
+  return res.data as { data: CitizenSearchRecord[]; meta: PaginationMeta };
 }
 
 export interface CitizenDetailRecord {
@@ -1631,6 +1663,10 @@ export interface SchemeDocumentReviewRecord {
   id: string;
   status: "pending" | "verified" | "rejected";
   rejection_reason?: string | null;
+  pending_reason?: string | null;
+  application_source?: "citizen" | "volunteer" | string;
+  submitted_by?: string | null;
+  submitted_by_user?: { id: string; name: string } | null;
   reviewed_at?: string | null;
   requirement: SchemeRequiredDocumentRecord;
   document: {
@@ -1697,6 +1733,10 @@ export interface SchemeApplicationRecord {
   } | null;
   remarks?: string | null;
   rejection_reason?: string | null;
+  pending_reason?: string | null;
+  application_source?: "citizen" | "volunteer" | string;
+  submitted_by?: string | null;
+  submitted_by_user?: { id: string; name: string } | null;
   processed_date?: string | null;
   processed_by?: { id: string; name: string } | null;
   beneficiaries?: SchemeBeneficiaryRecord[];
@@ -1948,17 +1988,28 @@ export async function withdrawSchemeApplication(id: string, reason: string) {
 export async function submitCitizenSchemeApplication(data: {
   scheme_id: string;
   remarks?: string;
+  target_citizen_id?: string;
 }) {
   const res = await api.post("/citizen/scheme-applications", data);
+  return res.data as SchemeApplicationRecord;
+}
+
+export async function submitAssistedSchemeApplication(data: {
+  scheme_id: string;
+  target_citizen_id: string;
+  remarks?: string;
+}) {
+  const res = await api.post("/schemes/applications/assisted", data);
   return res.data as SchemeApplicationRecord;
 }
 
 export async function reviewSchemeApplication(
   id: string,
   data: {
-    action: "start_review" | "approve" | "reject";
+    action: "start_review" | "mark_pending" | "approve" | "reject";
     remarks?: string;
     rejection_reason?: string;
+    pending_reason?: string;
     sanctioned_amount?: number;
     sanction_order_number?: string;
   },
@@ -2236,6 +2287,9 @@ export interface FamilyRecord {
   id: string;
   family_id: string;
   head_of_family_name: string;
+  head_citizen_id?: string | null;
+  head?: { id: string; unique_id: string; first_name: string; last_name: string } | null;
+  citizens?: Array<Record<string, unknown>>;
   members_count: number;
   voters_count: number;
   village_id: string;
@@ -2314,6 +2368,20 @@ export async function updateFamilyMember(
 ) {
   const res = await api.put(`/families/${id}/members/${memberId}`, data);
   return res.data as FamilyRecord;
+}
+
+export interface FamilyDashboardRecord {
+  data: {
+    family: FamilyRecord;
+    summary: Record<string, number>;
+    members: Array<Record<string, unknown>>;
+    recent_activity: Array<{ id: string; description: string; created_at: string }>;
+  };
+}
+
+export async function fetchFamilyDashboard(id: string) {
+  const res = await api.get(`/families/${id}/dashboard`);
+  return res.data as FamilyDashboardRecord;
 }
 
 // ── Documents ────────────────────────────────────────────────────────────────

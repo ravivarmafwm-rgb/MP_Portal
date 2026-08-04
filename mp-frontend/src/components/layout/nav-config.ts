@@ -34,6 +34,7 @@ export const navSections: NavSection[] = [
       { title: "Create Profile", url: "/citizens/create-profile" },
       { title: "Citizen Profile", url: "/citizens/profile" },
       { title: "Families", url: "/citizens/families" },
+      { title: "Family Dashboard", url: "/citizens/family-dashboard" },
       { title: "Documents", url: "/citizens/documents" },
       { title: "Interactions", url: "/citizens/interactions" },
       { title: "Booth Mapping", url: "/citizens/booth-mapping" },

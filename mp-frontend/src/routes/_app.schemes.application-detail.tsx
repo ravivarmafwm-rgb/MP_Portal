@@ -122,6 +122,12 @@ function ApplicationDetail() {
             )}
           </Card>
         )}
+        {(application.pending_reason || application.application_source) && (
+          <Card className="p-5">
+            {application.application_source && <p className="text-sm"><span className="font-medium">Applied by:</span> {application.application_source === "volunteer" ? "Volunteer-assisted" : "Citizen"}</p>}
+            {application.pending_reason && <p className="mt-2 text-sm"><span className="font-medium">Pending reason:</span> {application.pending_reason}</p>}
+          </Card>
+        )}
         <Tabs defaultValue="documents">
           <TabsList>
             <TabsTrigger value="documents">

@@ -8,6 +8,7 @@ use App\Models\CitizenAddress;
 use App\Models\Constituency;
 use App\Models\Mandal;
 use App\Models\Role;
+use App\Models\Permission;
 use App\Models\Scheme;
 use App\Models\SchemeEligibilityRule;
 use App\Models\User;
@@ -17,12 +18,34 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 use App\Models\DocumentCategory;
 use App\Models\SchemeRequiredDocument;
+use App\Models\Family;
+use App\Models\FamilyMember;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 class SchemeApplicationWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_volunteer_can_submit_for_scoped_citizen_and_official_can_return_pending_with_reason(): void
+    {
+        $village = $this->village();
+        $volunteerRole = Role::create(['name' => 'Volunteer', 'slug' => 'volunteer', 'level' => 9, 'is_active' => true]);
+        $permission = Permission::create(['name' => 'Apply schemes', 'slug' => 'schemes.apply', 'module' => 'schemes']);
+        $volunteerRole->permissions()->attach($permission);
+        $officialRole = Role::create(['name' => 'Super Admin', 'slug' => 'super-admin', 'level' => 1, 'is_active' => true]);
+        $citizen = Citizen::create(['unique_id' => 'CIT-ASSIST-1', 'first_name' => 'Assisted', 'last_name' => 'Citizen', 'date_of_birth' => today()->subYears(35), 'gender' => 'Female', 'mobile_number' => '9876500011']);
+        CitizenAddress::create(['citizen_id' => $citizen->id, 'address_type' => 'residential', 'village_id' => $village->id, 'is_primary' => true]);
+        $scheme = Scheme::create(['name' => 'Assisted Welfare', 'code' => 'ASSIST-1', 'category' => 'welfare', 'start_date' => today()->subDay(), 'is_active' => true]);
+        $volunteer = User::factory()->create(['role_id' => $volunteerRole->id, 'village_id' => $village->id]);
+        Sanctum::actingAs($volunteer);
+        $applicationId = $this->postJson('/api/schemes/applications/assisted', ['target_citizen_id' => $citizen->id, 'scheme_id' => $scheme->id])->assertCreated()->assertJsonPath('application_source', 'volunteer')->json('id');
+        $this->assertDatabaseHas('scheme_applications', ['id' => $applicationId, 'submitted_by' => $volunteer->id, 'application_source' => 'volunteer']);
+        Sanctum::actingAs(User::factory()->create(['role_id' => $officialRole->id]));
+        $this->postJson("/api/schemes/applications/{$applicationId}/review", ['action' => 'start_review'])->assertOk()->assertJsonPath('status', 'under_review');
+        $this->postJson("/api/schemes/applications/{$applicationId}/review", ['action' => 'mark_pending', 'pending_reason' => 'Please confirm the latest income certificate.'])->assertOk()->assertJsonPath('status', 'pending');
+        $this->assertDatabaseHas('scheme_applications', ['id' => $applicationId, 'pending_reason' => 'Please confirm the latest income certificate.']);
+    }
 
     public function test_linked_citizen_submits_and_staff_reviews_and_approves_an_eligible_application(): void
     {
@@ -253,6 +276,61 @@ class SchemeApplicationWorkflowTest extends TestCase
         ])->assertOk()->assertJsonPath('is_active', false);
         $this->deleteJson("/api/schemes/{$catalogId}")->assertNoContent();
         $this->assertSoftDeleted('schemes', ['id' => $catalogId]);
+    }
+
+    public function test_family_head_can_apply_for_member_and_official_rejection_is_attributed(): void
+    {
+        $village = $this->village();
+        $citizenRole = Role::create(['name' => 'Citizen', 'slug' => 'citizen', 'level' => 11, 'is_active' => true]);
+        $officialRole = Role::create(['name' => 'Super Admin', 'slug' => 'super-admin', 'level' => 1, 'is_active' => true]);
+        $head = Citizen::create([
+            'unique_id' => 'CIT-HEAD-1', 'first_name' => 'Family', 'last_name' => 'Head',
+            'date_of_birth' => today()->subYears(45), 'gender' => 'Male', 'mobile_number' => '9876500015',
+        ]);
+        $member = Citizen::create([
+            'unique_id' => 'CIT-MEMBER-1', 'first_name' => 'Family', 'last_name' => 'Member',
+            'date_of_birth' => today()->subYears(20), 'gender' => 'Female', 'mobile_number' => '9876500016',
+        ]);
+        CitizenAddress::create(['citizen_id' => $head->id, 'address_type' => 'residential', 'village_id' => $village->id, 'is_primary' => true]);
+        CitizenAddress::create(['citizen_id' => $member->id, 'address_type' => 'residential', 'village_id' => $village->id, 'is_primary' => true]);
+        $family = Family::create([
+            'family_id' => 'FAM-SCHEME-1', 'head_citizen_id' => $head->id, 'village_id' => $village->id,
+            'head_of_family_name' => 'Family Head', 'members_count' => 2, 'voters_count' => 2,
+            'economic_status' => 'middle', 'is_bpl' => false,
+        ]);
+        $head->update(['family_id' => $family->id, 'relationship_to_head' => 'Self']);
+        $member->update(['family_id' => $family->id, 'relationship_to_head' => 'Daughter']);
+        FamilyMember::create(['family_id' => $family->id, 'citizen_id' => $head->id, 'relationship_with_head' => 'Self', 'is_head' => true, 'date_of_joining_family' => today()]);
+        FamilyMember::create(['family_id' => $family->id, 'citizen_id' => $member->id, 'relationship_with_head' => 'Daughter', 'is_head' => false, 'date_of_joining_family' => today()]);
+        $citizenUser = User::factory()->create(['role_id' => $citizenRole->id, 'citizen_id' => $head->id]);
+        $official = User::factory()->create(['role_id' => $officialRole->id]);
+        $scheme = Scheme::create([
+            'name' => 'Family Assistance', 'code' => 'FAMILY-1', 'category' => 'welfare',
+            'start_date' => today()->subDay(), 'is_active' => true,
+        ]);
+
+        Sanctum::actingAs($citizenUser);
+        $applicationId = $this->postJson('/api/citizen/scheme-applications', [
+            'scheme_id' => $scheme->id, 'target_citizen_id' => $member->id,
+        ])->assertCreated()->assertJsonPath('citizen_id', $member->id)->json('id');
+
+        Sanctum::actingAs($official);
+        $this->postJson("/api/schemes/applications/{$applicationId}/review", [
+            'action' => 'start_review',
+        ])->assertOk()->assertJsonPath('processed_by.id', $official->id);
+        $this->postJson("/api/schemes/applications/{$applicationId}/review", [
+            'action' => 'reject',
+            'rejection_reason' => 'The submitted household income evidence does not meet the scheme threshold.',
+        ])->assertOk()->assertJsonPath('status', 'rejected')->assertJsonPath('processed_by.id', $official->id);
+
+        $this->assertDatabaseHas('scheme_applications', [
+            'id' => $applicationId, 'family_id' => $family->id, 'citizen_id' => $member->id,
+            'processed_by' => $official->id,
+            'rejection_reason' => 'The submitted household income evidence does not meet the scheme threshold.',
+        ]);
+        $this->assertDatabaseHas('activity_logs', [
+            'loggable_id' => $applicationId, 'action' => 'application_rejected', 'user_id' => $official->id,
+        ]);
     }
 
     private function village(): Village

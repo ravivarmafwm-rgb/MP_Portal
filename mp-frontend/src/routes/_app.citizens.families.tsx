@@ -156,6 +156,7 @@ function FamiliesPage() {
                                 {member.relationship_with_head}
                               </span>
                               <div className="flex gap-1">
+                                <Button asChild size="sm" variant="outline"><Link to="/citizens/profile" search={{ id: member.citizen.id }}>View</Link></Button>
                                 <FamilyMemberDialog
                                   familyId={record.id}
                                   member={member}
@@ -197,6 +198,7 @@ function FamiliesPage() {
                           Open head profile
                         </Link>
                       </Button>
+                      <Button asChild size="sm"><Link to="/citizens/family-dashboard" search={{ id: record.id }}>Family dashboard</Link></Button>
                     </div>
                   )}
                   {!head && (

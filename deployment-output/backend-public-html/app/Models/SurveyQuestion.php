@@ -23,6 +23,7 @@ class SurveyQuestion extends Model
         'validation_rule',
         'help_text',
         'category',
+        'branching_rules',
         'created_by',
         'updated_by',
     ];
@@ -31,6 +32,7 @@ class SurveyQuestion extends Model
         'options' => 'array',
         'is_required' => 'boolean',
         'sort_order' => 'integer',
+        'branching_rules' => 'array',
     ];
 
     public function survey()

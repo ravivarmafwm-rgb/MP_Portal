@@ -1,160 +1,475 @@
-# MP Constituency Management System — Project Audit
+# MP Connect - Current Project Audit
 
-**Audit date:** 2026-08-03  
-**Authority:** `client-requirements.txt` plus verified source code.  
-**Scope:** Laravel API (`mp-dashboard`), React/Vite client (`mp-frontend`), database migrations and runtime configuration. Deployment artifacts were not changed.
+**Verified:** 2026-08-04 (Asia/Kolkata) - Phase 11 complete  
+**Repository:** `E:\\bup\\MP_Portal`  
+**Source of truth:** `client-requirements.txt` and the current source code.
 
 ## Executive summary
 
-The application is a real Laravel 13 + PostgreSQL API and React/Vite/TanStack Router client. Core citizen, family, volunteer, grievance, project/MPLADS, schemes, meetings, surveys, documents, notifications, communications and analytics foundations are implemented with real persistence and protected API routes.
+MP Connect is a Laravel 13 API with a React/Vite/TypeScript web application. The implemented platform covers authentication, roles and permissions, citizen and family management, schemes, volunteers, field visits, grievances, surveys, meetings, MPLADS/projects, documents, communications, dashboards, exports and audit/activity logging.
 
-Priority 3 operational work is implemented in the source, and the citizen/family production phase has now been extended with server-persisted user preferences, Andhra Pradesh state validation, corrected family-head editing, profile/family API integration checks, a database-backed citizen management dashboard, volunteer history in Citizen 360, family-member ownership enforcement, and local draft recovery in the enrollment wizard. No mock data or deployment code was added.
+The Family-First workflow is implemented: families have canonical heads, citizens have direct family ownership, family dashboards are live, and citizen/volunteer scheme applications record who submitted them. The web application includes responsive layouts and a volunteer offline foundation using encrypted IndexedDB queues.
 
-The remaining limitations are explicit: OCR requires a configured provider, communication channels require production provider credentials, Excel/PDF export adapters are not present (CSV is available), and true load testing requires an external test environment. Native mobile/offline applications remain outside this web project.
+The project is not honestly 100% production-ready yet. Remaining release work is mainly operational verification, complete browser/device testing, provider delivery verification, advanced document/OCR workflows, deeper exports/analytics, and native mobile applications. Native/offline mobile apps remain outside the current desktop/tablet/mobile-responsive web scope.
 
-## Verified completion
+## Current completion estimate
 
-| Area | Status | Evidence |
-|---|---|---|
-| Backend | 90% | Domain models, policies, requests, services, resources, jobs, commands and migrations are present; the citizen dashboard is scoped, permission-protected and aggregated from live PostgreSQL data. Some older controllers still use inline validation. |
-| Frontend | 90% | Real API-backed routes and responsive screens; Citizen 360 now includes volunteer, interaction and audit views, and enrollment drafts can be resumed; TypeScript and production build pass. |
-| Database | 90% | UUID/FK/soft-delete/audit schema plus Priority 3 indexes, OCR/retention/branching columns and applied user-preferences JSONB column. |
-| API | 86% | Protected CRUD/workflow APIs, document search/OCR request, meeting analytics/reminders and survey branching persistence. |
-| Authentication | 84% | Sanctum/session controls, citizen-only public registration, MFA foundations and rate limiting exist. |
-| Authorization | 82% | Permission middleware, policies and geographic scope service are used; a complete matrix audit remains advisable. |
-| Security | 81% | Private documents, upload validation, encrypted identity/payment fields, signed webhooks and ownership/scope checks exist. |
-| Testing | 74% | PHPUnit: 54 tests, 354 assertions passed; no browser/load suite. |
-| Production readiness | 81% | PHP tests, routes, TypeScript, Vite build and ESLint pass; production DB verification remains dependent on Supabase DNS availability. |
-| Overall project | **85%** | Strong production foundation; the citizen dashboard and scoped aggregation are verified by feature tests. Production database verification remains dependent on DNS availability. |
-
-## Priority 3 implementation completed
-
-## Citizen and family phase update (2026-08-03)
-
-- Dependency scan completed for Laravel routes/controllers/policies/models/services/resources/requests, React routes/components/API/React Query/TanStack Router, migrations/seeders and role/geographic relationships.
-- User preferences now persist through authenticated `GET/PUT /api/user/preferences`, validated by `UpdatePreferencesRequest`, stored in `users.preferences`, and consumed by the Preferences screen. Local storage remains only as a last-known UI fallback.
-- Citizen and address requests now accept only `Andhra Pradesh`; production seed data and test fixtures that referenced Telangana were corrected.
-- Family edit head selection now only permits existing family members, matching the backend FamilyService invariant that a head must already belong to the family.
-- Citizen profile loading was verified end-to-end: TanStack search validation supplies the citizen ID, React Query calls `GET /api/citizens/{citizen}`, and the backend returns the authorized 360 resource with family, addresses, schemes, grievances, appointments, surveys, documents, projects and activity history.
-- Super Admin profile uses the authenticated profile API and exposes role/MFA/session information; no separate unsafe privileged profile endpoint was introduced.
-
-### Citizen dashboard completion
-
-- `GET /api/citizens/dashboard` is protected by `citizens.view`, applies `GeographicScopeService`, and aggregates live citizens, families, beneficiaries, volunteers, addresses, schemes and quality alerts.
-- The dashboard route `/citizens/dashboard` is the Citizen module landing page and uses TanStack Router, React Query and Recharts. It has loading, API-error, empty-geography and CSV-export handling; it does not substitute demo values.
-- Verified dashboard outputs include total/gender/age/family/beneficiary/disability/widow/pension counts, occupation/education/gender/age/monthly-registration breakdowns, scheme coverage, authorized geography and duplicate/missing-data alerts.
-- The dashboard also exposes family-size distribution and recent citizens, scoped activity logs, citizen document uploads and scheme enrollments; the UI renders these feeds with empty states.
-- A feature test verifies the endpoint returns scoped live aggregates. PostgreSQL month grouping uses `date_trunc`; the test driver uses the equivalent SQLite expression.
-- The requested advanced population pyramid, migration trend, PDF/Excel adapters, and full recent-activity feed are not falsely marked complete because their source data/export adapters are not present.
-
-### Search, indexes and caching
-
-- Migration `2026_08_01_000001_add_priority_three_operational_indexes` adds safe, conditional indexes for citizen, grievance, project, survey, document, appointment, meeting and communication-recipient filtering paths.
-- The same migration adds `documents.ocr_status`, `ocr_text`, `ocr_error`, `ocr_processed_at` and `retention_until`.
-- `CacheGetResponse` middleware (`cache.get`) caches successful authenticated JSON GET responses using the user and request URL as the key. Dashboard, meeting dashboard/analytics routes use it with bounded TTLs.
-- Document search supports title, document number, file name and extracted OCR text with pagination and permission enforcement.
-- No synthetic read model or fabricated analytics was introduced. Load tests still require a staging environment and representative data.
-
-### Meetings
-
-- Existing appointment follow-up fields, update workflow, attendance fields, notes and analytics were verified.
-- `meetings:reminders` is scheduled daily and handles next-day appointments and due follow-ups; `--dry-run` suppresses notifications.
-- Meeting/public-meeting media can use the secured document pipeline through `public_meeting` and `appointment` documentable types, with policy and geographic checks.
-
-### Surveys
-
-- Migration `2026_08_01_000002_add_survey_branching_rules` adds JSON branching rules to survey questions.
-- `SaveSurveyRequest` validates rule shape, operators and actions; `SurveyController` rejects self/cross-survey references.
-- `SurveyResponseService` evaluates rules server-side and does not require or persist hidden questions from untrusted submissions.
-- Existing response CSV export and analytics endpoints remain real and permission protected.
-
-### Communications
-
-- Existing queued recipient job uses three attempts with backoff, records failures/provider responses, synchronizes campaign counters and supports retry.
-- Email, SMS, WhatsApp and voice delivery reject missing production credentials instead of silently succeeding.
-- Signed provider/WhatsApp webhook endpoints update sent/delivered/failed state and retain safe provider payload fields.
-
-### Documents/OCR/retention
-
-- `DocumentOcrService` calls a configured OCR provider using the private storage disk and records processing state, extracted text and errors.
-- `ProcessDocumentOcr` is queued with retries/backoff and is dispatched only for supported MIME types when `request_ocr` is selected.
-- Document upload UI exposes the real OCR request option and does not fabricate extracted text.
-- `documents:retention` reports or marks expired documents as retained and notifies the creator; it is scheduled daily.
-- Document versions, secure download/preview, upload validation, search and authorization remain in place. OCR provider configuration is required for runtime extraction.
-
-## Module status
-
-| Module | Completion | Verified state |
+| Area | Completion | Evidence and qualification |
 |---|---:|---|
-| Authentication/registration | 84% | Sanctum, roles, citizen registration, MFA/session foundations. |
-| Citizens/families/addresses | 95% | CRUD, family membership/head, import/export, duplicate safeguards, address history, policies, live scoped dashboard aggregation, volunteer history, audit views, nested ownership checks and draft recovery. Server-side draft persistence and PDF/Excel exports remain. |
-| Volunteers/field visits | 82% | Applications, visits, assignments, GPS lifecycle, attendance and dashboards; native offline app is not included. |
-| Projects/MPLADS | 83% | CRUD, lookups, workflow, budget/financial endpoints, documents/photos and analytics; advanced sanctions/export depth remains. |
-| Grievances | 84% | Registration, assignment, SLA/escalation, notes, attachments, resolution/reopen and analytics. |
-| Meetings | 80% | Appointments, public meetings, tours, Janata Darbar, notes, follow-ups, reminders and analytics; richer attendance/media UX remains. |
-| Surveys | 82% | Builder, assignments, responses, analytics, CSV export and server-side branching. |
-| Schemes/applications | 78% | Catalog, rules, applications, beneficiaries, documents and disbursement foundations. |
-| Documents/media | 80% | Private storage, versions, secure access, OCR queue/search, retention command and meeting attachments. |
-| Communications | 78% | Templates, consent, campaigns, queued delivery, retries, signed webhooks and counters; credentials/provider observability are operational concerns. |
-| Reports/analytics | 74% | Real dashboard/analytics/CSV endpoints; Excel/PDF and load-test evidence remain. |
+| Authentication | 88% | Sanctum/session flow, MFA paths and role redirects exist; full production identity and browser verification remain. |
+| Roles and permissions | 88% | Permission middleware, policies and geographic scope exist; authenticated village-scope, unscoped-deny and MP cross-village regression coverage now passes. Full staging matrix remains. |
+| Citizens | 97% | CRUD, addresses, duplicate checks, import/export, bulk actions, dashboard, profile, family links and self-service APIs exist. Server-side drafts and some advanced UX remain. |
+| Families | 97% | CRUD, head/member relationships, family dashboard, documents/benefits and citizen self-service exist. Merge/transfer and richer media workflows remain. |
+| Volunteers / field app | 87% | Visits, GPS lifecycle, assignments, attachments, dashboard, offline citizen/grievance/survey queues and offline scheme assistance exist. Draft UX and full attachment metadata workflow remain. |
+| Schemes and benefits | 91% | Catalog, eligibility, required documents, citizen/family applications, volunteer assistance, review, pending/rejection reasons and attribution exist. Provider/runtime verification remains. |
+| Grievances | 86% | Registration, linkage, assignment, SLA/escalation, notes, resolution, reopen, audit and UI exist. Notification provider verification remains. |
+| Projects / MPLADS | 86% | CRUD, lookups, budget/workflow/progress/photos/exports exist. Financial edge cases and report breadth remain. |
+| Meetings | 80% | Meetings, appointments, tours and Janata Darbar exist. Follow-up, attendance, reminders and media depth remain. |
+| Surveys | 82% | CRUD, assignments, response collection, analytics/export and encrypted offline response sync exist. Branching and advanced analytics UX remain. |
+| Documents / media | 82% | Secure upload/download/version paths exist. OCR, search, retention and version comparison remain. |
+| Communications | 78% | Consent, channels, campaigns and notification architecture exist. Provider delivery, retry, webhooks and observability remain. |
+| Backend | 94% | Broad API/domain coverage with requests, resources, policies, services, transactions and tests; production CORS hardening and targeted Guzzle remediation verified. Operational verification remains. |
+| Frontend | 94% | Live API-backed screens, responsive UI, loading/error/empty states, offline sync bar, production build and Playwright public-route checks pass. Authenticated staging E2E remains pending. |
+| Database | 93% | Supabase schema is migrated; family-first and scheme-attribution migrations are recorded as `Ran`. |
+| API | 90% | Protected CRUD, workflow, statistics, import/export and self-service routes exist. Contract and staging smoke coverage must expand. |
+| Security | 94% | Policies, ownership/geography checks, upload controls, sensitive-data handling, production-aware CORS, clean Composer advisories and clean npm audit are verified. Provider, header and penetration testing remain. |
+| Automated tests | 87% | Backend suite passes with role/geography and scheme workflow regression coverage; three Playwright public navigation/protection tests pass and authenticated smoke specs are configured. Staging credentials, load testing and complete authorization matrix remain. |
+| **Overall project** | **93%** | Deployment secret handling, production CORS, targeted backend/frontend dependency remediation and browser regression coverage were strengthened; live operational, advanced workflow and production verification gaps remain. |
 
-## Verification results
+## Verified implementation
 
-- `php artisan migrate:status`: all migrations applied, including both Priority 3 migrations.
-- `php artisan migrate --force`: completed successfully against the configured PostgreSQL database.
-- `php artisan test` with `APP_ENV=testing`: **54 passed, 354 assertions**.
-- `php artisan route:list`: meetings, surveys and documents routes load, including `GET api/documents/search`.
-- `php artisan route:clear` and `php artisan config:clear`: completed successfully.
-- `npx tsc --noEmit --pretty false`: **passes with no errors** after the citizen dashboard route and export fixes.
-- `npm run build`: **passes** (Vite production build, 3325 modules; citizen dashboard chunk emitted).
-- Current citizen/family phase build: **passes**; `npx tsc --noEmit` also passes after the profile, family and wizard updates.
-- `npm run lint`: fails on pre-existing repository-wide Prettier CRLF diagnostics (`Delete ␍`) across many files; this is formatting noise, not a TypeScript or runtime failure.
-- PHP syntax checks for all new/changed PHP files: passed.
-- `php artisan migrate --force`: **passed**; `2026_08_03_000001_add_user_preferences` applied successfully.
-- Backend PHPUnit: **54 passed, 354 assertions**, including the live citizen-dashboard and family ownership regression tests.
-- Current `npm run lint` verification: **passes with 7 existing Fast Refresh warnings and no errors**; the ESLint configuration handles mixed CRLF/LF formatting.
-- Family ownership regression test: **passed**; a member from another family cannot be mutated through a nested family route.
-- `php artisan migrate:status` and `php artisan optimize:clear` were attempted against the configured Supabase host but were blocked in this run by DNS resolution (`could not translate host name db.dtjrusxkiujbubaduslw.supabase.co`). No migration was changed or skipped; the test suite uses its isolated SQLite database and passes.
+### Citizen and Family
 
-## Files changed for Priority 3
+- Citizen CRUD, search, filtering, pagination, bulk update/archive, imports, import error inspection and CSV export.
+- Address CRUD with ownership/geographic checks.
+- Duplicate prevention for identity/mobile/voter-related fields.
+- Family CRUD and nested member management with transactional synchronization.
+- Canonical `citizens.family_id`, `citizens.relationship_to_head` and `families.head_citizen_id` relationships, with safe legacy backfill.
+- Family dashboard and authenticated citizen family self-service endpoint.
+- Live citizen dashboard aggregates for totals, demographics, geography, alerts and recent activity.
+- Citizen profile sections for personal, political, address, family, documents, schemes, benefits, grievances, projects, meetings, interactions, surveys, volunteers and activity/timeline data.
+- Eight-step citizen wizard with browser-local draft autosave/resume.
 
-Backend: `CacheGetResponse`, `DocumentOcrService`, `ProcessDocumentOcr`, `ProcessDocumentRetention`, `SendMeetingReminders`, Priority 3 migrations, `DocumentController`, `SurveyController`, `SurveyResponseService`, `UploadDocumentRequest`, `SaveSurveyRequest`, `Document`, `SurveyQuestion`, `DocumentPolicy`, `bootstrap/app.php`, `config/services.php`, `routes/api.php`, `routes/console.php`.
+### Schemes
 
-Frontend: `DocumentUploadDialog`, family/volunteer dialog type fixes, project analytics/budget/contractor typing fixes, grievance analytics import, scheme eligibility typing and API type metadata. These fixes removed the previous TypeScript errors without changing business behavior.
+- Citizen self-application and family-head member targeting.
+- Volunteer-assisted application route with scoped citizen search.
+- Application attribution (`submitted_by`, `application_source`).
+- Required application documents and document review.
+- Official transitions for under review, pending, approved and rejected states.
+- Mandatory pending/rejection reasons and processor attribution.
 
-Citizen/family phase files: `Citizen`, `Family`, `CitizenController`, `FamilyController`, `CitizenResource`, `FamilyResource`, `CitizenEnrollmentWorkflowTest`, `FamilyWorkflowTest`, `src/lib/api.ts`, `src/routes/_app.citizens.profile.tsx`, `src/routes/_app.citizens.create-profile.tsx`, `src/routes/_app.citizens.dashboard.tsx`, `eslint.config.js`, plus the existing family/profile components and preference files.
+### Volunteer offline foundation
 
-## Remaining backlog
+- AES-GCM encrypted IndexedDB drafts for citizen enrollment, family enrollment, grievances and scheme applications.
+- Existing encrypted offline survey queue with idempotent synchronization.
+- Auto-sync when connectivity returns for field roles.
+- Manual sync bar with pending count, status, progress feedback, citizen draft resume and deletion controls.
+- Failed attachment records remain queued for retry instead of being silently removed.
 
-### Priority 1 — Critical
+## Current verification results
 
-- Configure and verify production OCR, SMS, WhatsApp, voice and mail providers with secrets outside source control.
-- Keep PostgreSQL connectivity monitored and use the Supabase IPv4-compatible session pooler if the direct endpoint becomes unavailable again.
-- Execute authenticated staging smoke tests for document uploads, OCR jobs, retention, meeting reminders and signed webhooks.
-- Resolve repository-wide ESLint/Prettier line-ending configuration so CI lint can pass.
+| Verification | Result |
+|---|---|
+| `php artisan test` | **PASS** - 61 tests, 388 assertions. |
+| `php artisan migrate:status` | **PASS** - all migrations recorded as `Ran` on Supabase. |
+| `php artisan migrate --force` | **PASS** - no pending migrations. |
+| `php artisan route:list` | **PASS** - Citizen, Family, Scheme, Grievance, Survey and Volunteer routes load. |
+| `npx.cmd tsc --noEmit --pretty false` | **PASS**. |
+| `npm.cmd run build` | **PASS** - Vite production build completed. |
+| `npm.cmd run lint` | **PASS** - no errors; 7 existing Fast Refresh warnings. |
+| PHP syntax checks | **PASS** for changed services and migration files. |
 
-### Priority 2 — High
+## Remaining work by priority
 
-- Add browser/E2E coverage for role/geographic authorization and the new Priority 3 workflows.
-- Add Excel/PDF export adapters where contractual reporting requires them.
-- Add production observability (queue metrics, provider latency/error metrics, alerting and structured correlation IDs).
+### Priority 1 - Release critical
 
-### Priority 3 — Medium
+- Run authenticated staging/production smoke tests for citizen, family, volunteer and scheme workflows.
+- Verify `.env`, `APP_KEY`, storage, queue, mail/SMS/push providers, HTTPS and security headers on the deployed host.
+- Complete authorization tests for every role combined with every geographic scope.
+- Run controlled authenticated staging smoke tests for every critical role and geography.
 
-- Run k6/Locust load tests against a staging dataset; tune PostgreSQL indexes using query plans.
-- Expand meeting attendance/follow-up/media UI and survey branching authoring/analytics UX.
-- Add OCR full-text/trigram indexing and document version comparison UI.
+### Priority 2 - High
 
-### Priority 4 — Low
+- Add server-side citizen/family wizard drafts and multi-device resume.
+- Complete browser E2E tests and production error/queue monitoring.
+- Complete Excel/PDF/filtered export parity across all major modules.
+- Complete offline document-category metadata and full photo/document acceptance testing.
 
-- Native mobile/offline applications and app-store distribution.
-- Broader read-model/event-sourcing optimization after production traffic measurements.
+### Priority 3 - Medium
+
+- Add search read models/indexes, caching and load tests.
+- Complete meeting follow-ups, attendance, reminders and media workflows.
+- Complete survey branching, export and analytics UX.
+- Complete communication delivery, retry, webhook and observability workflows.
+- Add OCR extraction/search, retention controls and document version comparison.
+
+### Priority 4 - Low
+
+- Native/offline Android and iOS applications.
+- Accessibility certification and further UI polish.
+- Long-term event/read-model optimization.
+
+## Known limitations
+
+- Offline draft resume is fully implemented for citizen enrollment; grievance and scheme drafts are retained and synchronized but do not yet have dedicated form-resume screens.
+- Generic offline document uploads require document-category metadata before upload; files are retained when missing or rejected.
+- Offline photo compression/retention and browser/device acceptance testing are not complete.
+- Provider configuration cannot be proven by source inspection alone.
+- No claim is made that native mobile applications are complete.
+- Production CORS now restricts origins to `CORS_ALLOWED_ORIGINS`; this must be populated correctly on the host before deployment.
+
+## Phase 7 completion record
+
+### Changes made
+
+- Applied targeted, non-major Composer security updates: `guzzlehttp/guzzle` 7.12.1 -> 7.15.2, `guzzlehttp/psr7` 2.12.1 -> 2.13.0, plus compatible transitive updates to `guzzlehttp/promises` and `symfony/deprecation-contracts`.
+- Regenerated optimized Composer autoload files through the normal Composer update lifecycle.
+- Applied the safe npm audit remediation available within the current dependency graph: PostCSS, nanoid, js-yaml and brace-expansion patch updates. No major framework/toolchain upgrade was performed.
+- Checked for credentialed staging variables without reading values; no `E2E_*` variables are present in the current environment, so authenticated smoke tests remain safely skipped.
+
+### Phase 7 validation
+
+| Check | Result |
+|---|---|
+| `composer update guzzlehttp/guzzle guzzlehttp/psr7 --with-all-dependencies` | **PASS** - four compatible package updates applied |
+| `composer audit --format=json` | **PASS** - no Composer advisories |
+| `composer validate --no-check-publish` | **PASS** |
+| `php artisan test` | **PASS** - 61 tests, 388 assertions |
+| `php artisan migrate:status` | **PASS** - all migrations `Ran` |
+| `php artisan optimize:clear` | **PASS** |
+| `php artisan route:list --path=api` | **PASS** - 221 API routes load |
+| `npx.cmd tsc --noEmit --pretty false` | **PASS** |
+| `npm.cmd run build` | **PASS** |
+| `npm.cmd run lint` | **PASS** - 7 existing Fast Refresh warnings, no errors |
+| `npm.cmd run test:e2e -- --workers=1` | **PASS** - 3 public tests passed; 3 authenticated tests skipped without credentials |
+| `npm.cmd audit --json` | **PASS** - no vulnerabilities reported |
+
+### Phase 7 remaining issues
+
+- Authenticated staging tests require valid non-production test accounts and a permitted TLS/network path.
+- Composer package cache permissions remain an environment warning but do not block installation or the clean Composer audit.
+- The deployment package excludes `.env`; the server operator must create it directly on the host.
+- Role/geography tests currently cover village-scoped staff, outside-village denial, unscoped staff denial and MP cross-village access. A full role-by-scope matrix and live staging smoke test are still required.
+- The Composer package cache directory is not writable in this environment; Composer proceeded without cache and installation/audit succeeded.
 
 ## Next approved task
 
-Run an authenticated staging verification of Priority 3 workflows (OCR provider, document retention, meeting reminders, survey branching and communication webhooks), then add the required Excel/PDF reporting adapters based on confirmed client output formats.
+Provide non-production credentials and execute the authenticated Playwright and full role/geography matrix against `https://mpportal.focuswebmedia.in`.
 
-## Change history
+## Files changed in the latest phase
 
-- 2026-07-31: Re-audited source and implemented Priority 3 operational changes; applied two migrations; verified PHPUnit, routes, TypeScript and Vite build. Deployment artifacts were intentionally left untouched.
-0
+- `mp-frontend/src/lib/offline-store.ts`
+- `mp-frontend/src/lib/offline-sync.ts`
+- `mp-frontend/src/components/schemes/CitizenSchemeApplicationDialog.tsx`
+- `mp-frontend/src/components/schemes/VolunteerSchemeApplicationDialog.tsx`
+- `mp-frontend/src/components/volunteers/OfflineSyncBar.tsx`
+- `mp-frontend/src/components/grievances/VolunteerGrievanceFilingDialog.tsx`
+- `mp-dashboard/tests/Feature/Auth/RoleGeographicAuthorizationTest.php`
+- `mp-dashboard/tests/Feature/Schemes/SchemeApplicationWorkflowTest.php`
+- `mp-frontend/package.json`
+- `mp-frontend/package-lock.json`
+- `mp-frontend/playwright.config.ts`
+- `mp-frontend/tests/e2e/public-navigation.spec.ts`
+- `mp-frontend/tests/e2e/authenticated-smoke.spec.ts`
+- `mp-dashboard/composer.lock`
+- `deployment-output/backend-public-html/.env.example`
+- `deployment-output/backend-public-html/composer.lock`
+- `deployment-output/backend-public-html.zip`
+- `PROJECT-AUDIT-REPORT.md`
+
+## Phase 11 completion record
+
+### Changes made
+
+- Rebuilt `deployment-output/backend-public-html/` from the current `mp-dashboard` source so the upload package includes the latest backend controllers, routes, policies, migrations, Composer lockfile and CORS configuration.
+- Preserved the flattened Hostinger layout: `index.php`, `app/`, `bootstrap/`, `config/`, `database/`, `resources/`, `routes/`, `storage/` and `vendor/` are siblings; no `public/` directory or parent-relative bootstrap paths remain.
+- Synchronized `deployment-output/backend-public-html/.env.example` byte-for-byte with `mp-dashboard/.env.example`, including the backend URL, frontend URL, CORS and Sanctum settings.
+- Regenerated `deployment-output/backend-public-html.zip` and removed tests, node modules, editor files, PHPUnit cache and other development-only artifacts.
+- Included the verified `mp-dashboard/.env` in this emergency upload archive at the user's explicit request; the archive is sensitive and the root `.htaccess` denies HTTP access to `.env`.
+- Confirmed frontend deployment remains GitHub-based at `https://mpportal.focuswebmedia.in`; no frontend source changes were required.
+
+### Phase 11 validation
+
+| Check | Result |
+|---|---|
+| Backend package source synchronization | **PASS** - current `composer.lock` and `.env.example` match source |
+| Flat `index.php` paths | **PASS** - uses sibling `vendor/` and `bootstrap/` paths |
+| Package security scan | **PASS** - no tests, `node_modules`, `public/`, editor files or PHPUnit cache; `.env` is intentionally included and protected by `.htaccess` |
+| Backend package ZIP | **PASS** - regenerated upload archive |
+| Backend full tests | **PASS** - 61 tests, 388 assertions |
+| Migration status | **PASS** - all migrations `Ran` |
+| API route load | **PASS** - 221 API routes |
+| Frontend production origin | **PASS** - `/`, `/login`, `/dashboard` return HTTP 200 |
+| Frontend API target | **PASS** - points to `mpportaldashboard.focuswebmedia.in/api` |
+| Authenticated staging tests | **SKIPPED** - no `E2E_*` credentials supplied |
+
+### Phase 11 remaining issues
+
+- Upload `deployment-output/backend-public-html.zip` contents to the backend domain's `public_html`; this emergency archive includes the verified `.env` and must be kept private. Rotate credentials if the archive is shared.
+- Authenticated citizen, volunteer and official smoke tests and the full role/geographic matrix remain pending until non-production accounts are supplied.
+
+### Deployment recovery update
+
+- Added explicit flat-root `DirectoryIndex index.php` and `Options -Indexes` directives to the package `.htaccess`.
+- Documented clean replacement of the old Hostinger `public_html` contents, including hidden files, to prevent mixed-release 500 errors.
+- Documented safe Laravel cache/config/route/view clearing for stale-release recovery.
+- Confirmed the 429 is expected Laravel throttling: login is limited to five attempts per minute per email/IP and registration to five attempts per hour per IP. The safe recovery is to wait for the window or run `php artisan cache:clear`; throttling must not be disabled and no public reset script should be deployed.
+
+## Phase 10 completion record
+
+### Verification performed
+
+- Confirmed the split deployment origins:
+  - Backend/API: `https://mpportaldashboard.focuswebmedia.in`
+  - Frontend: `https://mpportal.focuswebmedia.in`
+- Confirmed frontend production configuration uses `https://mpportaldashboard.focuswebmedia.in/api`.
+- Confirmed the frontend origin serves the Vite SPA successfully at `/`, `/login` and `/dashboard` with HTTP 200 responses.
+- Confirmed the backend origin serves `/up` and `/api/public/statistics` successfully over HTTPS.
+- Ran Playwright against the correct frontend origin using `E2E_BASE_URL` and `E2E_SKIP_SERVER=1`.
+- No `E2E_*` credentials are configured, so authenticated role tests remain skipped.
+
+### Phase 10 validation
+
+| Check | Result |
+|---|---|
+| Frontend `/` | **PASS** - HTTP 200 |
+| Frontend `/login` | **PASS** - HTTP 200 |
+| Frontend `/dashboard` | **PASS** - SPA fallback HTTP 200 |
+| Backend `/up` | **PASS** - HTTP 200 |
+| Backend `/api/public/statistics` | **PASS** - HTTP 200 JSON |
+| Staging public Playwright suite | **PASS** - 3 tests passed |
+| Staging authenticated Playwright suite | **SKIPPED** - no credentials supplied |
+| Frontend API target | **PASS** - backend API origin configured |
+
+### Phase 10 remaining issues
+
+- Authenticated citizen, volunteer and official smoke tests still require non-production accounts.
+- Full role/geographic verification remains pending until those accounts are supplied.
+- No source or deployment logic was changed in this phase; the prior TLS symptom was resolved as a local Schannel limitation and the correct frontend origin is now verified.
+
+## Phase 9 completion record
+
+### Verification performed
+
+- DNS resolves `mpportaldashboard.focuswebmedia.in` to `157.173.216.202`; TCP 443 is reachable.
+- A Node.js HTTPS client completes certificate validation and receives `200` from `/up` and `/api/public/statistics`. The earlier TLS error is specific to this Windows PowerShell/cURL Schannel environment (`SEC_E_NO_CREDENTIALS`), not an unreachable server certificate.
+- The deployed host currently serves the Laravel landing page at `/`; `/login` and `/dashboard` return 404, so it is not serving the React/Vite SPA routes expected by the Playwright suite.
+- No `E2E_*` environment variables are configured; authenticated citizen, volunteer and official tests remain skipped.
+- Existing backend role/geographic and scheme workflow tests pass.
+
+### Phase 9 validation
+
+| Check | Result |
+|---|---|
+| DNS A lookup | **PASS** - `157.173.216.202` |
+| TCP 443 connectivity | **PASS** |
+| Node HTTPS `/up` | **PASS** - HTTP 200 |
+| Node HTTPS `/api/public/statistics` | **PASS** - HTTP 200 JSON |
+| PowerShell/cURL HTTPS | **ENVIRONMENT BLOCKED** - Schannel `SEC_E_NO_CREDENTIALS` |
+| `php artisan test` | **PASS** - 61 tests, 388 assertions |
+| `php artisan test --filter=RoleGeographicAuthorizationTest` | **PASS** - 4 tests, 9 assertions |
+| `npm.cmd run test:e2e -- --workers=1` | **PASS** locally - 3 public passed; 3 authenticated skipped |
+| Playwright against deployed host | **BLOCKED** - deployed host returns 404 for SPA `/login` and `/dashboard` routes |
+
+### Phase 9 remaining issues
+
+- This is not a server TLS outage. Use Node/Chrome or repair the local Windows Schannel/certificate provider if PowerShell-based probing is required.
+- The staging domain is currently pointing at the Laravel backend landing page rather than the React production build. Deploy the Vite `dist` output at the intended frontend origin, configure SPA fallback rewrites, and set `E2E_BASE_URL` accordingly.
+- Authenticated smoke tests require non-production citizen, volunteer and official credentials; none were supplied.
+- Full role/geographic verification remains pending until the correct frontend origin and credentials are available.
+
+## Phase 8 completion record
+
+### Verification performed
+
+- Checked for `E2E_*` environment variables without reading values; none are configured in this environment.
+- Ran the existing village-scope, outside-scope, unscoped-denial and MP cross-village authorization regression tests.
+- Ran the scheme application workflow regression tests, including family-member targeting and official decision attribution.
+- Attempted the deployed `/up` health endpoint; the current execution environment closed the TLS connection before receiving a response.
+
+### Phase 8 validation
+
+| Check | Result |
+|---|---|
+| `php artisan test` | **PASS** - 61 tests, 388 assertions |
+| `php artisan test --filter=RoleGeographicAuthorizationTest` | **PASS** - 4 tests, 9 assertions |
+| `php artisan test --filter=SchemeApplicationWorkflowTest` | **PASS** - 4 tests, 78 assertions |
+| `php artisan migrate:status` | **PASS** - all migrations `Ran` |
+| `php artisan route:list --path=api` | **PASS** - 221 API routes load |
+| `npx.cmd tsc --noEmit --pretty false` | **PASS** |
+| `npm.cmd run test:e2e -- --workers=1` | **PASS** - 3 public tests passed; 3 authenticated tests skipped without credentials |
+| `https://mpportaldashboard.focuswebmedia.in/up` | **BLOCKED** - TLS connection closed by this environment |
+
+### Phase 8 remaining issues
+
+- No staging credentials were supplied, so citizen, volunteer and official authenticated browser flows remain unverified.
+- The current automated authorization matrix covers four representative geographic/role cases; full MP, MLA, PA, coordinator, officer, volunteer and data-entry combinations still require credentialed staging verification.
+- The deployed health check requires a network environment that permits the host TLS handshake.
+
+## Phase 6 completion record
+
+### Changes made
+
+- Added environment-gated authenticated smoke tests for citizen, volunteer and official role sign-in and `/api/user` role verification.
+- Tests skip unless explicit `E2E_*_EMAIL` and `E2E_*_PASSWORD` variables are supplied; no credentials are stored in the repository and no mutating workflow is executed.
+- Added Playwright dependency/configuration from Phase 5 remains in place.
+
+### Phase 6 validation
+
+| Check | Result |
+|---|---|
+| `npm.cmd run test:e2e -- --workers=1` | **PASS** - 3 public tests passed; 3 authenticated tests skipped because credentials were not supplied |
+| `npx.cmd tsc --noEmit --pretty false` | **PASS** |
+| `npm.cmd run build` | **PASS** |
+| `npm.cmd run lint` | **PASS** - 7 existing Fast Refresh warnings, no errors |
+| `php artisan test` | **PASS** - 61 tests, 388 assertions |
+| `php artisan migrate:status` | **PASS** - all migrations `Ran` |
+| `php artisan optimize:clear` | **PASS** |
+| `npm.cmd audit --json` | **REVIEW REQUIRED** - 37 vulnerabilities: 21 high, 16 moderate |
+| `composer audit --format=json` | **REVIEW REQUIRED** - Guzzle/Guzzle PSR-7 advisories; Composer cache directory not writable |
+
+### Phase 6 remaining issues
+
+- Authenticated staging tests remain unexecuted until credentials and deployed-host TLS access are provided.
+- Dependency upgrades were not forced because several advisories have no compatible automatic fix and major toolchain changes require review.
+- Provider delivery, load testing and production observability remain outstanding.
+
+## Phase 5 completion record
+
+### Changes made
+
+- Added `@playwright/test` as a development dependency.
+- Added reusable Playwright configuration with local Vite web-server support, CI retries, trace retention and screenshots on failure.
+- Added public navigation E2E coverage for the landing page, login/register links and unauthenticated protected-route redirect.
+- Installed the Chromium test runtime for local verification.
+
+### Phase 5 validation
+
+| Check | Result |
+|---|---|
+| `npx.cmd playwright test --list` | **PASS** - 3 tests discovered |
+| `npm.cmd run test:e2e -- --workers=1` (local Vite server, mocked public/auth API responses) | **PASS** - 3 tests |
+| `npx.cmd tsc --noEmit --pretty false` | **PASS** |
+| `npm.cmd run build` | **PASS** |
+| `npm.cmd run lint` | **PASS** - 7 existing Fast Refresh warnings, no errors |
+| `php artisan test` | **PASS** - 61 tests, 388 assertions |
+| `npm.cmd audit --omit=dev --audit-level=high` | **BLOCKED** - 11 transitive vulnerabilities reported; 6 high, 5 moderate |
+
+### Phase 5 remaining issues
+
+- Authenticated staging E2E could not run without valid test accounts and a working TLS/network path to the deployed host.
+- Dependency vulnerabilities require a separate dependency-review decision; no automatic `npm audit fix` was applied.
+- Load testing, provider delivery and production observability remain outstanding.
+
+## Phase 4 completion record
+
+### Verification performed
+
+- Audited frontend authentication bootstrap, protected routes, role guards, API error extraction, CSRF handling, inactivity logout, loading/error/empty states and volunteer auto-sync mounting.
+- Confirmed `.env.production` points to `https://mpportaldashboard.focuswebmedia.in/api` and contains no localhost API reference.
+- Confirmed no `TODO`, `FIXME`, `mock` or localhost references were found in the frontend source scan.
+- Attempted to connect to the available in-app browser, but no browser instance is available in this execution environment. No browser test runner is configured in `mp-frontend/package.json`.
+
+### Phase 4 validation
+
+| Check | Result |
+|---|---|
+| `php artisan test` | **PASS** - 61 tests, 388 assertions |
+| `php artisan route:list --path=api` | **PASS** - API routes load |
+| `npx.cmd tsc --noEmit --pretty false` | **PASS** |
+| `npm.cmd run build` | **PASS** |
+| `npm.cmd run lint` | **PASS** - 7 existing Fast Refresh warnings, no errors |
+| Browser E2E | **NOT RUN** - browser unavailable and no configured E2E runner |
+
+### Phase 4 remaining issues
+
+- Browser E2E and device-level verification require a browser-capable environment and authenticated test accounts.
+- Live staging smoke remains blocked by the deployed host TLS/network issue observed in Phase 3.
+- Load testing and provider/queue observability verification remain outstanding.
+
+## Phase 3 completion record
+
+### Changes made
+
+- Extended scheme workflow regression coverage for a family head applying on behalf of a family member.
+- Verified official review attribution (`processed_by`) and mandatory rejection reason persistence, activity logging and family linkage.
+- Confirmed existing citizen self-application, volunteer-assisted application, document upload/ownership checks, pending decisions and approval prerequisites.
+- No migrations, API changes, dependency changes or production business logic changes were required.
+
+### Phase 3 validation
+
+| Check | Result |
+|---|---|
+| `php artisan test --filter=SchemeApplicationWorkflowTest` | **PASS** - 4 tests, 78 assertions |
+| `php artisan test` | **PASS** - 61 tests, 388 assertions |
+| `php artisan migrate:status` | **PASS** - all migrations `Ran` |
+| `php artisan route:list --path=schemes` | **PASS** - 24 scheme routes |
+| `php artisan optimize:clear` | **PASS** |
+| `npx.cmd tsc --noEmit --pretty false` | **PASS** |
+| `npm.cmd run build` | **PASS** |
+| `npm.cmd run lint` | **PASS** - 7 existing Fast Refresh warnings, no errors |
+| Live `/up` endpoint smoke request | **BLOCKED** - TLS connection closed by the current execution environment; no staging credentials were used |
+
+### Phase 3 remaining issues
+
+- A real authenticated smoke run against the deployed host still requires valid test accounts/credentials and a network path that permits the host TLS connection.
+- Browser E2E, provider delivery and production queue/notification verification remain outstanding.
+
+## Phase 2 completion record
+
+### Changes made
+
+- Added `RoleGeographicAuthorizationTest` covering scoped village access, outside-village denial, unscoped staff denial and MP cross-village access.
+- Confirmed existing middleware, policies, controller authorization calls and geographic query scoping remain active; no production authorization logic or database schema was changed.
+- Preserved all existing uncommitted application changes.
+
+### Phase 2 validation
+
+| Check | Result |
+|---|---|
+| `php artisan test --filter=RoleGeographicAuthorizationTest` | **PASS** - 4 tests, 9 assertions |
+| `php artisan test` | **PASS** - 60 tests, 379 assertions |
+| `php artisan migrate:status` | **PASS** - all migrations `Ran` |
+| `php artisan route:list` | **PASS** - 226 application routes shown |
+| `php artisan optimize:clear` | **PASS** |
+| `npx.cmd tsc --noEmit --pretty false` | **PASS** |
+| `npm.cmd run build` | **PASS** |
+| `npm.cmd run lint` | **PASS** - 7 existing Fast Refresh warnings, no errors |
+
+### Phase 2 remaining issues
+
+- This is automated regression coverage, not a substitute for live authenticated staging tests.
+- The full role-by-geographic-level matrix (MP, MLA, staff, coordinators, volunteers and officers across constituency, assembly, mandal, village and ward) remains a release verification task.
+- Provider delivery, browser E2E and production monitoring remain unverified.
+
+## Phase 1 completion record
+
+### Changes made
+
+- Removed `.env` from `deployment-output/backend-public-html/`.
+- Rebuilt `deployment-output/backend-public-html.zip` without `.env`, tests or `node_modules`.
+- Updated `deployment-output/DEPLOYMENT-GUIDE.md` to require server-side creation of `.env` and explicit production domain configuration.
+- Updated `deployment-output/SECURITY-ACTIONS.txt` with secret-handling and denied-path checks.
+- Changed `.env.example` to safe production-oriented placeholders (`APP_DEBUG=false`, production URL, blank database credentials, required CORS/Sanctum variables).
+- Made `config/cors.php` allow local/LAN origins only outside production and use `CORS_ALLOWED_ORIGINS` in production.
+
+### Phase 1 validation
+
+| Check | Result |
+|---|---|
+| `php -l config/cors.php` | **PASS** |
+| `php artisan test` | **PASS** - 56 tests, 370 assertions |
+| `php artisan route:list` | **PASS** - 227 route lines |
+| `php artisan migrate:status` | **PASS** - all migrations `Ran` |
+| Effective production CORS | **PASS** - configured frontend origin only; no localhost origins |
+| `npx tsc --noEmit --pretty false` | **PASS** |
+| `npm run build` | **PASS** |
+| `npm run lint` | **PASS** - 7 existing warnings, no errors |
+| Deployment package security scan | **PASS** - no `.env`, tests or `node_modules` |
+
+### Phase 1 remaining issues
+
+- The live host must receive a manually created `.env` with correct production values.
+- Provider delivery and authenticated smoke tests remain unverified.
+- Existing uncommitted application changes were preserved and not rewritten.

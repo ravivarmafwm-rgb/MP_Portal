@@ -25,6 +25,7 @@ class FamilyService
             }
             $family = Family::create($this->familyAttributes($data) + [
                 'family_id' => 'FAM'.strtoupper(Str::random(8)),
+                'head_citizen_id' => $head->id,
                 'head_of_family_name' => $this->citizenName($head),
                 'members_count' => 1,
                 'voters_count' => $head->is_voter ? 1 : 0,
@@ -38,6 +39,7 @@ class FamilyService
                 'date_of_joining_family' => today(),
                 'created_by' => $actor->id,
             ]);
+            $head->update(['family_id' => $family->id, 'relationship_to_head' => 'Self', 'updated_by' => $actor->id]);
             $this->audit($family, $actor, $request, 'family_created', null, $family->getAttributes());
             return $family->fresh($this->relations());
         });
@@ -58,6 +60,10 @@ class FamilyService
                 if (!$member) throw ValidationException::withMessages(['head_citizen_id' => ['The head must already be a member of this family.']]);
                 $locked->familyMembers()->update(['is_head' => false, 'updated_by' => $actor->id]);
                 $member->update(['is_head' => true, 'relationship_with_head' => 'Self', 'updated_by' => $actor->id]);
+                $locked->head_citizen_id = $head->id;
+                $locked->save();
+                $locked->citizens()->whereKeyNot($head->id)->update(['relationship_to_head' => 'Member', 'updated_by' => $actor->id]);
+                $head->update(['family_id' => $locked->id, 'relationship_to_head' => 'Self', 'updated_by' => $actor->id]);
                 $data['head_of_family_name'] = $this->citizenName($head);
             }
             unset($data['head_citizen_id']);
@@ -76,9 +82,12 @@ class FamilyService
             abort_unless($citizen->addresses()->where('village_id', $locked->village_id)->exists(), 422, 'Citizen must have an address in the family village.');
             if ($data['is_head'] ?? false) {
                 $locked->familyMembers()->update(['is_head' => false, 'updated_by' => $actor->id]);
+                $locked->citizens()->whereKeyNot($citizen->id)->update(['relationship_to_head' => 'Member', 'updated_by' => $actor->id]);
                 $locked->update(['head_of_family_name' => $this->citizenName($citizen), 'updated_by' => $actor->id]);
             }
             FamilyMember::create($data + ['family_id' => $locked->id, 'created_by' => $actor->id]);
+            $citizen->update(['family_id' => $locked->id, 'relationship_to_head' => ($data['is_head'] ?? false) ? 'Self' : $data['relationship_with_head'], 'updated_by' => $actor->id]);
+            if ($data['is_head'] ?? false) $locked->update(['head_citizen_id' => $citizen->id]);
             $this->syncCounts($locked);
             $this->audit($locked, $actor, $request, 'family_member_added', null, ['citizen_id' => $citizen->id]);
             return $locked->fresh($this->relations());
@@ -93,6 +102,7 @@ class FamilyService
             if ($member->is_head) throw ValidationException::withMessages(['member' => ['Assign another head before removing the current head.']]);
             $citizenId = $member->citizen_id;
             $member->forceDelete();
+            $member->citizen()->update(['family_id' => null, 'relationship_to_head' => null, 'updated_by' => $actor->id]);
             $this->syncCounts($locked);
             $this->audit($locked, $actor, $request, 'family_member_removed', ['citizen_id' => $citizenId], null);
             return $locked->fresh($this->relations());
@@ -110,12 +120,15 @@ class FamilyService
             }
             if ($data['is_head'] ?? false) {
                 $locked->familyMembers()->where('id', '<>', $member->id)->update(['is_head' => false, 'updated_by' => $actor->id]);
+                $locked->citizens()->whereKeyNot($member->citizen_id)->update(['relationship_to_head' => 'Member', 'updated_by' => $actor->id]);
                 $citizen = $member->citizen()->firstOrFail();
                 $locked->update(['head_of_family_name' => $this->citizenName($citizen), 'updated_by' => $actor->id]);
                 $data['relationship_with_head'] = 'Self';
+                $locked->update(['head_citizen_id' => $member->citizen_id]);
             }
             $old = $member->getAttributes();
             $member->update($data + ['updated_by' => $actor->id]);
+            $member->citizen()->update(['family_id' => $locked->id, 'relationship_to_head' => $data['relationship_with_head'], 'updated_by' => $actor->id]);
             $this->audit($locked, $actor, $request, 'family_member_updated', $old, $member->fresh()->getAttributes());
             return $locked->fresh($this->relations());
         });
@@ -125,7 +138,7 @@ class FamilyService
     {
         $citizen = Citizen::findOrFail($id);
         abort_unless(app(GeographicScopeService::class)->allows($actor, $citizen), 403);
-        if (FamilyMember::where('citizen_id', $id)->exists()) {
+        if (FamilyMember::where('citizen_id', $id)->whereNull('deleted_at')->exists() || Citizen::whereKey($id)->whereNotNull('family_id')->exists()) {
             throw ValidationException::withMessages([$field => ['This citizen already belongs to a family.']]);
         }
         return $citizen;
@@ -160,7 +173,7 @@ class FamilyService
 
     private function relations(): array
     {
-        return ['village.mandal', 'ward', 'pollingBooth', 'familyMembers.citizen'];
+        return ['village.mandal', 'ward', 'pollingBooth', 'head', 'familyMembers.citizen'];
     }
 
     private function citizenName(Citizen $citizen): string

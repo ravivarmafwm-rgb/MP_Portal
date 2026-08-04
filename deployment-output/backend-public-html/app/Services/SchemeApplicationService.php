@@ -48,11 +48,13 @@ class SchemeApplicationService
             $oldStatus = $locked->status;
             $target = match ($data['action']) {
                 'start_review' => 'under_review',
+                'mark_pending' => 'pending',
                 'approve' => 'approved',
                 'reject' => 'rejected',
             };
             abort_unless(
                 ($target === 'under_review' && in_array($oldStatus, ['pending', 'submitted'], true))
+                || ($target === 'pending' && $oldStatus === 'under_review')
                 || (in_array($target, ['approved', 'rejected'], true) && $oldStatus === 'under_review'),
                 422,
                 "Application cannot transition from {$oldStatus} to {$target}."
@@ -82,6 +84,7 @@ class SchemeApplicationService
                 'processed_date' => today(),
                 'remarks' => $data['remarks'] ?? $locked->remarks,
                 'rejection_reason' => $target === 'rejected' ? $data['rejection_reason'] : null,
+                'pending_reason' => $target === 'pending' ? $data['pending_reason'] : null,
                 'sanctioned_amount' => $target === 'approved' ? $data['sanctioned_amount'] : null,
                 'sanction_date' => $target === 'approved' ? today() : null,
                 'sanction_order_number' => $target === 'approved' ? $data['sanction_order_number'] : null,

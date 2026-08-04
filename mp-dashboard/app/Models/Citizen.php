@@ -17,6 +17,8 @@ class Citizen extends Model
 
     protected $fillable = [
         'unique_id',
+        'family_id',
+        'relationship_to_head',
         'first_name',
         'middle_name',
         'last_name',
@@ -81,6 +83,11 @@ class Citizen extends Model
     public function familyMembers()
     {
         return $this->hasMany(FamilyMember::class);
+    }
+
+    public function family()
+    {
+        return $this->belongsTo(Family::class);
     }
 
     public function families()

@@ -40,7 +40,7 @@ class CitizenController extends Controller
     {
         abort_unless($request->user()->hasRole('citizen'), 403);
         abort_unless($request->user()->citizen_id, 409, 'This account is not linked to a citizen record. Contact the constituency office.');
-        $citizen = Citizen::with(['addresses.village:id,name', 'addresses.ward:id,name'])
+        $citizen = Citizen::with(['addresses.village:id,name', 'addresses.ward:id,name', 'family.head', 'family.citizens'])
             ->withCount(['grievances', 'schemeApplications', 'surveyResponses', 'documents'])
             ->findOrFail($request->user()->citizen_id);
         $this->authorize('view', $citizen);
@@ -110,6 +110,8 @@ class CitizenController extends Controller
         $citizen = Citizen::with([
             'addresses.village.mandal',
             'addresses.ward',
+            'family.head',
+            'family.citizens',
             'families.village.mandal',
             'families.familyMembers.citizen',
             'grievances.category',

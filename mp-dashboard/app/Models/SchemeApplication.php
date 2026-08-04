@@ -43,6 +43,9 @@ class SchemeApplication extends Model
         'bank_ifsc_ciphertext',
         'created_by',
         'updated_by',
+        'submitted_by',
+        'application_source',
+        'pending_reason',
     ];
 
     protected $casts = [
@@ -54,7 +57,13 @@ class SchemeApplication extends Model
     ];
 
     protected $hidden = ['bank_account_number', 'bank_ifsc', 'bank_account_ciphertext', 'bank_account_hash', 'bank_ifsc_ciphertext'];
-    protected $appends = ['bank_account_masked', 'bank_ifsc_masked'];
+    protected $appends = ['bank_account_masked', 'bank_ifsc_masked', 'submitted_by_user'];
+
+    public function getSubmittedByUserAttribute(): ?array
+    {
+        $user = $this->relationLoaded('submittedBy') ? $this->getRelation('submittedBy') : null;
+        return $user ? ['id' => $user->id, 'name' => $user->name] : null;
+    }
 
     public function setBankAccountNumberAttribute(?string $value): void
     {
@@ -133,6 +142,11 @@ class SchemeApplication extends Model
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function submittedBy()
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
     }
 
     public function documents()

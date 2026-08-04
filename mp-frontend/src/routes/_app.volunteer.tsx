@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchVolunteerDashboardStats } from "@/lib/api";
+import { VolunteerGrievanceFilingDialog } from "@/components/grievances/VolunteerGrievanceFilingDialog";
 
 export const Route = createFileRoute("/_app/volunteer")({
   head: () => ({ meta: [{ title: "Volunteer Dashboard — MP Platform" }] }),
@@ -45,11 +46,14 @@ function VolunteerDashboardPage() {
             : "Your assigned field operations"
         }
         actions={
-          <Button size="sm" asChild>
-            <Link to="/citizens/create-profile">
-              <UserPlus className="h-4 w-4 mr-1.5" /> Enroll Citizen
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <VolunteerGrievanceFilingDialog />
+            <Button size="sm" asChild>
+              <Link to="/citizens/create-profile">
+                <UserPlus className="h-4 w-4 mr-1.5" /> Enroll Citizen
+              </Link>
+            </Button>
+          </div>
         }
       />
       <div className="space-y-6 p-4 md:p-8">
@@ -216,8 +220,11 @@ function VolunteerDashboardPage() {
           <Button asChild variant="outline" size="sm">
             <Link to="/citizens/create-profile">Citizen Enrollment</Link>
           </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/grievances/list">File Complaint</Link>
+          <div className="sm:hidden">
+            <VolunteerGrievanceFilingDialog />
+          </div>
+          <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
+            <Link to="/grievances/list">View Grievances</Link>
           </Button>
           <Button asChild variant="outline" size="sm">
             <Link to="/surveys/active">Surveys</Link>

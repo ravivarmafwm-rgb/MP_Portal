@@ -8,7 +8,7 @@ class UploadSchemeApplicationDocumentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('citizen') === true;
+        return $this->user()?->hasRole(['citizen', 'volunteer']) === true;
     }
 
     public function rules(): array

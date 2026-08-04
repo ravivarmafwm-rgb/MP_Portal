@@ -12,7 +12,12 @@ class CitizenPolicy
     public function viewAny(User $user): bool { return $user->hasPermission('citizens.view'); }
     public function view(User $user, Citizen $citizen): bool
     {
-        if ($user->hasRole('citizen') && $user->citizen_id === $citizen->id) return true;
+        if ($user->hasRole('citizen')) {
+            if ($user->citizen_id === $citizen->id) return true;
+            return $user->citizen_id !== null
+                && $citizen->family_id !== null
+                && $citizen->family_id === Citizen::whereKey($user->citizen_id)->value('family_id');
+        }
         if (!$user->hasPermission('citizens.view')) return false;
         return app(GeographicScopeService::class)->allows($user, $citizen);
     }

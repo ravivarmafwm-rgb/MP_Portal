@@ -20,6 +20,9 @@ class FamilyPolicy
 
     public function view(User $user, Family $family): bool
     {
+        if ($user->hasRole('citizen')) {
+            return $user->citizen_id !== null && $family->citizens()->whereKey($user->citizen_id)->exists();
+        }
         return $user->hasPermission('families.manage')
             && app(GeographicScopeService::class)->allows($user, $family);
     }
