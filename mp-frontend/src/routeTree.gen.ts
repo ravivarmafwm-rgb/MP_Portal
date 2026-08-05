@@ -47,6 +47,7 @@ import { Route as AppDocumentsIndexRouteImport } from './routes/_app.documents.i
 import { Route as AppCommunicationIndexRouteImport } from './routes/_app.communication.index'
 import { Route as AppCitizensIndexRouteImport } from './routes/_app.citizens.index'
 import { Route as AppAnalyticsIndexRouteImport } from './routes/_app.analytics.index'
+import { Route as AppAdminIndexRouteImport } from './routes/_app.admin.index'
 import { Route as AppVolunteersVisitsRouteImport } from './routes/_app.volunteers.visits'
 import { Route as AppVolunteersTrainingRouteImport } from './routes/_app.volunteers.training'
 import { Route as AppVolunteersProfileRouteImport } from './routes/_app.volunteers.profile'
@@ -124,6 +125,7 @@ import { Route as AppAnalyticsConstituencyRouteImport } from './routes/_app.anal
 import { Route as AppAnalyticsBoothRouteImport } from './routes/_app.analytics.booth'
 import { Route as AppAnalyticsAssemblyRouteImport } from './routes/_app.analytics.assembly'
 import { Route as AppAdminUsersRouteImport } from './routes/_app.admin.users'
+import { Route as AppAdminPermissionsRouteImport } from './routes/_app.admin.permissions'
 import { Route as AppVolunteersVisitsIdRouteImport } from './routes/_app.volunteers.visits.$id'
 
 const VolunteerApplyRoute = VolunteerApplyRouteImport.update({
@@ -314,6 +316,11 @@ const AppAnalyticsIndexRoute = AppAnalyticsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppAnalyticsRoute,
+} as any)
+const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAdminRoute,
 } as any)
 const AppVolunteersVisitsRoute = AppVolunteersVisitsRouteImport.update({
   id: '/visits',
@@ -721,6 +728,11 @@ const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AppAdminPermissionsRoute = AppAdminPermissionsRouteImport.update({
+  id: '/permissions',
+  path: '/permissions',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppVolunteersVisitsIdRoute = AppVolunteersVisitsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -755,6 +767,7 @@ export interface FileRoutesByFullPath {
   '/surveys': typeof AppSurveysRouteWithChildren
   '/volunteer': typeof AppVolunteerRoute
   '/volunteers': typeof AppVolunteersRouteWithChildren
+  '/admin/permissions': typeof AppAdminPermissionsRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/analytics/assembly': typeof AppAnalyticsAssemblyRoute
   '/analytics/booth': typeof AppAnalyticsBoothRoute
@@ -832,6 +845,7 @@ export interface FileRoutesByFullPath {
   '/volunteers/profile': typeof AppVolunteersProfileRoute
   '/volunteers/training': typeof AppVolunteersTrainingRoute
   '/volunteers/visits': typeof AppVolunteersVisitsRouteWithChildren
+  '/admin/': typeof AppAdminIndexRoute
   '/analytics/': typeof AppAnalyticsIndexRoute
   '/citizens/': typeof AppCitizensIndexRoute
   '/communication/': typeof AppCommunicationIndexRoute
@@ -850,7 +864,6 @@ export interface FileRoutesByTo {
   '/official-register': typeof OfficialRegisterRoute
   '/register': typeof RegisterRoute
   '/volunteer-apply': typeof VolunteerApplyRoute
-  '/admin': typeof AppAdminRouteWithChildren
   '/citizen': typeof AppCitizenRoute
   '/coordinator': typeof AppCoordinatorRoute
   '/dashboard': typeof AppDashboardRoute
@@ -862,6 +875,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AppSettingsRoute
   '/staff': typeof AppStaffRoute
   '/volunteer': typeof AppVolunteerRoute
+  '/admin/permissions': typeof AppAdminPermissionsRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/analytics/assembly': typeof AppAnalyticsAssemblyRoute
   '/analytics/booth': typeof AppAnalyticsBoothRoute
@@ -939,6 +953,7 @@ export interface FileRoutesByTo {
   '/volunteers/profile': typeof AppVolunteersProfileRoute
   '/volunteers/training': typeof AppVolunteersTrainingRoute
   '/volunteers/visits': typeof AppVolunteersVisitsRouteWithChildren
+  '/admin': typeof AppAdminIndexRoute
   '/analytics': typeof AppAnalyticsIndexRoute
   '/citizens': typeof AppCitizensIndexRoute
   '/communication': typeof AppCommunicationIndexRoute
@@ -981,6 +996,7 @@ export interface FileRoutesById {
   '/_app/surveys': typeof AppSurveysRouteWithChildren
   '/_app/volunteer': typeof AppVolunteerRoute
   '/_app/volunteers': typeof AppVolunteersRouteWithChildren
+  '/_app/admin/permissions': typeof AppAdminPermissionsRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/analytics/assembly': typeof AppAnalyticsAssemblyRoute
   '/_app/analytics/booth': typeof AppAnalyticsBoothRoute
@@ -1058,6 +1074,7 @@ export interface FileRoutesById {
   '/_app/volunteers/profile': typeof AppVolunteersProfileRoute
   '/_app/volunteers/training': typeof AppVolunteersTrainingRoute
   '/_app/volunteers/visits': typeof AppVolunteersVisitsRouteWithChildren
+  '/_app/admin/': typeof AppAdminIndexRoute
   '/_app/analytics/': typeof AppAnalyticsIndexRoute
   '/_app/citizens/': typeof AppCitizensIndexRoute
   '/_app/communication/': typeof AppCommunicationIndexRoute
@@ -1100,6 +1117,7 @@ export interface FileRouteTypes {
     | '/surveys'
     | '/volunteer'
     | '/volunteers'
+    | '/admin/permissions'
     | '/admin/users'
     | '/analytics/assembly'
     | '/analytics/booth'
@@ -1177,6 +1195,7 @@ export interface FileRouteTypes {
     | '/volunteers/profile'
     | '/volunteers/training'
     | '/volunteers/visits'
+    | '/admin/'
     | '/analytics/'
     | '/citizens/'
     | '/communication/'
@@ -1195,7 +1214,6 @@ export interface FileRouteTypes {
     | '/official-register'
     | '/register'
     | '/volunteer-apply'
-    | '/admin'
     | '/citizen'
     | '/coordinator'
     | '/dashboard'
@@ -1207,6 +1225,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/staff'
     | '/volunteer'
+    | '/admin/permissions'
     | '/admin/users'
     | '/analytics/assembly'
     | '/analytics/booth'
@@ -1284,6 +1303,7 @@ export interface FileRouteTypes {
     | '/volunteers/profile'
     | '/volunteers/training'
     | '/volunteers/visits'
+    | '/admin'
     | '/analytics'
     | '/citizens'
     | '/communication'
@@ -1325,6 +1345,7 @@ export interface FileRouteTypes {
     | '/_app/surveys'
     | '/_app/volunteer'
     | '/_app/volunteers'
+    | '/_app/admin/permissions'
     | '/_app/admin/users'
     | '/_app/analytics/assembly'
     | '/_app/analytics/booth'
@@ -1402,6 +1423,7 @@ export interface FileRouteTypes {
     | '/_app/volunteers/profile'
     | '/_app/volunteers/training'
     | '/_app/volunteers/visits'
+    | '/_app/admin/'
     | '/_app/analytics/'
     | '/_app/citizens/'
     | '/_app/communication/'
@@ -1691,6 +1713,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/analytics/'
       preLoaderRoute: typeof AppAnalyticsIndexRouteImport
       parentRoute: typeof AppAnalyticsRoute
+    }
+    '/_app/admin/': {
+      id: '/_app/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AppAdminIndexRouteImport
+      parentRoute: typeof AppAdminRoute
     }
     '/_app/volunteers/visits': {
       id: '/_app/volunteers/visits'
@@ -2231,6 +2260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminUsersRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/_app/admin/permissions': {
+      id: '/_app/admin/permissions'
+      path: '/permissions'
+      fullPath: '/admin/permissions'
+      preLoaderRoute: typeof AppAdminPermissionsRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
     '/_app/volunteers/visits/$id': {
       id: '/_app/volunteers/visits/$id'
       path: '/$id'
@@ -2242,11 +2278,15 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppAdminRouteChildren {
+  AppAdminPermissionsRoute: typeof AppAdminPermissionsRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
+  AppAdminIndexRoute: typeof AppAdminIndexRoute
 }
 
 const AppAdminRouteChildren: AppAdminRouteChildren = {
+  AppAdminPermissionsRoute: AppAdminPermissionsRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
+  AppAdminIndexRoute: AppAdminIndexRoute,
 }
 
 const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
