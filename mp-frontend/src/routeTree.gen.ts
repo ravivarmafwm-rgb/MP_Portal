@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VolunteerApplyRouteImport } from './routes/volunteer-apply'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as OfficialRegisterRouteImport } from './routes/official-register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -122,6 +123,7 @@ import { Route as AppAnalyticsMandalRouteImport } from './routes/_app.analytics.
 import { Route as AppAnalyticsConstituencyRouteImport } from './routes/_app.analytics.constituency'
 import { Route as AppAnalyticsBoothRouteImport } from './routes/_app.analytics.booth'
 import { Route as AppAnalyticsAssemblyRouteImport } from './routes/_app.analytics.assembly'
+import { Route as AppAdminUsersRouteImport } from './routes/_app.admin.users'
 import { Route as AppVolunteersVisitsIdRouteImport } from './routes/_app.volunteers.visits.$id'
 
 const VolunteerApplyRoute = VolunteerApplyRouteImport.update({
@@ -132,6 +134,11 @@ const VolunteerApplyRoute = VolunteerApplyRouteImport.update({
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OfficialRegisterRoute = OfficialRegisterRouteImport.update({
+  id: '/official-register',
+  path: '/official-register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -709,6 +716,11 @@ const AppAnalyticsAssemblyRoute = AppAnalyticsAssemblyRouteImport.update({
   path: '/assembly',
   getParentRoute: () => AppAnalyticsRoute,
 } as any)
+const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppVolunteersVisitsIdRoute = AppVolunteersVisitsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -718,9 +730,10 @@ const AppVolunteersVisitsIdRoute = AppVolunteersVisitsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/official-register': typeof OfficialRegisterRoute
   '/register': typeof RegisterRoute
   '/volunteer-apply': typeof VolunteerApplyRoute
-  '/admin': typeof AppAdminRoute
+  '/admin': typeof AppAdminRouteWithChildren
   '/analytics': typeof AppAnalyticsRouteWithChildren
   '/citizen': typeof AppCitizenRoute
   '/citizens': typeof AppCitizensRouteWithChildren
@@ -742,6 +755,7 @@ export interface FileRoutesByFullPath {
   '/surveys': typeof AppSurveysRouteWithChildren
   '/volunteer': typeof AppVolunteerRoute
   '/volunteers': typeof AppVolunteersRouteWithChildren
+  '/admin/users': typeof AppAdminUsersRoute
   '/analytics/assembly': typeof AppAnalyticsAssemblyRoute
   '/analytics/booth': typeof AppAnalyticsBoothRoute
   '/analytics/constituency': typeof AppAnalyticsConstituencyRoute
@@ -833,9 +847,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/official-register': typeof OfficialRegisterRoute
   '/register': typeof RegisterRoute
   '/volunteer-apply': typeof VolunteerApplyRoute
-  '/admin': typeof AppAdminRoute
+  '/admin': typeof AppAdminRouteWithChildren
   '/citizen': typeof AppCitizenRoute
   '/coordinator': typeof AppCoordinatorRoute
   '/dashboard': typeof AppDashboardRoute
@@ -847,6 +862,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AppSettingsRoute
   '/staff': typeof AppStaffRoute
   '/volunteer': typeof AppVolunteerRoute
+  '/admin/users': typeof AppAdminUsersRoute
   '/analytics/assembly': typeof AppAnalyticsAssemblyRoute
   '/analytics/booth': typeof AppAnalyticsBoothRoute
   '/analytics/constituency': typeof AppAnalyticsConstituencyRoute
@@ -940,9 +956,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/official-register': typeof OfficialRegisterRoute
   '/register': typeof RegisterRoute
   '/volunteer-apply': typeof VolunteerApplyRoute
-  '/_app/admin': typeof AppAdminRoute
+  '/_app/admin': typeof AppAdminRouteWithChildren
   '/_app/analytics': typeof AppAnalyticsRouteWithChildren
   '/_app/citizen': typeof AppCitizenRoute
   '/_app/citizens': typeof AppCitizensRouteWithChildren
@@ -964,6 +981,7 @@ export interface FileRoutesById {
   '/_app/surveys': typeof AppSurveysRouteWithChildren
   '/_app/volunteer': typeof AppVolunteerRoute
   '/_app/volunteers': typeof AppVolunteersRouteWithChildren
+  '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/analytics/assembly': typeof AppAnalyticsAssemblyRoute
   '/_app/analytics/booth': typeof AppAnalyticsBoothRoute
   '/_app/analytics/constituency': typeof AppAnalyticsConstituencyRoute
@@ -1057,6 +1075,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/official-register'
     | '/register'
     | '/volunteer-apply'
     | '/admin'
@@ -1081,6 +1100,7 @@ export interface FileRouteTypes {
     | '/surveys'
     | '/volunteer'
     | '/volunteers'
+    | '/admin/users'
     | '/analytics/assembly'
     | '/analytics/booth'
     | '/analytics/constituency'
@@ -1172,6 +1192,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/official-register'
     | '/register'
     | '/volunteer-apply'
     | '/admin'
@@ -1186,6 +1207,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/staff'
     | '/volunteer'
+    | '/admin/users'
     | '/analytics/assembly'
     | '/analytics/booth'
     | '/analytics/constituency'
@@ -1278,6 +1300,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
+    | '/official-register'
     | '/register'
     | '/volunteer-apply'
     | '/_app/admin'
@@ -1302,6 +1325,7 @@ export interface FileRouteTypes {
     | '/_app/surveys'
     | '/_app/volunteer'
     | '/_app/volunteers'
+    | '/_app/admin/users'
     | '/_app/analytics/assembly'
     | '/_app/analytics/booth'
     | '/_app/analytics/constituency'
@@ -1395,6 +1419,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  OfficialRegisterRoute: typeof OfficialRegisterRoute
   RegisterRoute: typeof RegisterRoute
   VolunteerApplyRoute: typeof VolunteerApplyRoute
 }
@@ -1413,6 +1438,13 @@ declare module '@tanstack/react-router' {
       path: '/register'
       fullPath: '/register'
       preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/official-register': {
+      id: '/official-register'
+      path: '/official-register'
+      fullPath: '/official-register'
+      preLoaderRoute: typeof OfficialRegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -2192,6 +2224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsAssemblyRouteImport
       parentRoute: typeof AppAnalyticsRoute
     }
+    '/_app/admin/users': {
+      id: '/_app/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AppAdminUsersRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
     '/_app/volunteers/visits/$id': {
       id: '/_app/volunteers/visits/$id'
       path: '/$id'
@@ -2201,6 +2240,18 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AppAdminRouteChildren {
+  AppAdminUsersRoute: typeof AppAdminUsersRoute
+}
+
+const AppAdminRouteChildren: AppAdminRouteChildren = {
+  AppAdminUsersRoute: AppAdminUsersRoute,
+}
+
+const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
+  AppAdminRouteChildren,
+)
 
 interface AppAnalyticsRouteChildren {
   AppAnalyticsAssemblyRoute: typeof AppAnalyticsAssemblyRoute
@@ -2485,7 +2536,7 @@ const AppVolunteersRouteWithChildren = AppVolunteersRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
-  AppAdminRoute: typeof AppAdminRoute
+  AppAdminRoute: typeof AppAdminRouteWithChildren
   AppAnalyticsRoute: typeof AppAnalyticsRouteWithChildren
   AppCitizenRoute: typeof AppCitizenRoute
   AppCitizensRoute: typeof AppCitizensRouteWithChildren
@@ -2510,7 +2561,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAdminRoute: AppAdminRoute,
+  AppAdminRoute: AppAdminRouteWithChildren,
   AppAnalyticsRoute: AppAnalyticsRouteWithChildren,
   AppCitizenRoute: AppCitizenRoute,
   AppCitizensRoute: AppCitizensRouteWithChildren,
@@ -2540,6 +2591,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  OfficialRegisterRoute: OfficialRegisterRoute,
   RegisterRoute: RegisterRoute,
   VolunteerApplyRoute: VolunteerApplyRoute,
 }

@@ -1,6 +1,6 @@
 # MP Connect - Current Project Audit
 
-**Verified:** 2026-08-04 (Asia/Kolkata) - Phase 11 complete  
+**Verified:** 2026-08-05 (Asia/Kolkata) - Official role registration phase complete  
 **Repository:** `E:\\bup\\MP_Portal`  
 **Source of truth:** `client-requirements.txt` and the current source code.
 
@@ -16,7 +16,7 @@ The project is not honestly 100% production-ready yet. Remaining release work is
 
 | Area | Completion | Evidence and qualification |
 |---|---:|---|
-| Authentication | 88% | Sanctum/session flow, MFA paths and role redirects exist; full production identity and browser verification remain. |
+| Authentication | 93% | Universal login supports every seeded role; citizen registration remains public-only and official accounts now use expiring, single-use Super Admin invitations. Full production identity and browser verification remain. |
 | Roles and permissions | 88% | Permission middleware, policies and geographic scope exist; authenticated village-scope, unscoped-deny and MP cross-village regression coverage now passes. Full staging matrix remains. |
 | Citizens | 97% | CRUD, addresses, duplicate checks, import/export, bulk actions, dashboard, profile, family links and self-service APIs exist. Server-side drafts and some advanced UX remain. |
 | Families | 97% | CRUD, head/member relationships, family dashboard, documents/benefits and citizen self-service exist. Merge/transfer and richer media workflows remain. |
@@ -28,13 +28,13 @@ The project is not honestly 100% production-ready yet. Remaining release work is
 | Surveys | 82% | CRUD, assignments, response collection, analytics/export and encrypted offline response sync exist. Branching and advanced analytics UX remain. |
 | Documents / media | 82% | Secure upload/download/version paths exist. OCR, search, retention and version comparison remain. |
 | Communications | 78% | Consent, channels, campaigns and notification architecture exist. Provider delivery, retry, webhooks and observability remain. |
-| Backend | 94% | Broad API/domain coverage with requests, resources, policies, services, transactions and tests; production CORS hardening and targeted Guzzle remediation verified. Operational verification remains. |
-| Frontend | 94% | Live API-backed screens, responsive UI, loading/error/empty states, offline sync bar, production build and Playwright public-route checks pass. Authenticated staging E2E remains pending. |
-| Database | 93% | Supabase schema is migrated; family-first and scheme-attribution migrations are recorded as `Ran`. |
-| API | 90% | Protected CRUD, workflow, statistics, import/export and self-service routes exist. Contract and staging smoke coverage must expand. |
-| Security | 94% | Policies, ownership/geography checks, upload controls, sensitive-data handling, production-aware CORS, clean Composer advisories and clean npm audit are verified. Provider, header and penetration testing remain. |
-| Automated tests | 87% | Backend suite passes with role/geography and scheme workflow regression coverage; three Playwright public navigation/protection tests pass and authenticated smoke specs are configured. Staging credentials, load testing and complete authorization matrix remain. |
-| **Overall project** | **93%** | Deployment secret handling, production CORS, targeted backend/frontend dependency remediation and browser regression coverage were strengthened; live operational, advanced workflow and production verification gaps remain. |
+| Backend | 95% | Broad API/domain coverage with requests, resources, policies, services, transactions and tests; official invitation API and migration are covered by feature tests. Operational verification remains. |
+| Frontend | 95% | Live API-backed screens, responsive UI, loading/error/empty states, offline sync bar, universal login, official registration, production build and type-check pass. Authenticated staging E2E remains pending. |
+| Database | 94% | Supabase schema is migrated; user-invitation table is recorded as `Ran` with role and inviter foreign keys. |
+| API | 92% | Protected CRUD, workflow, statistics, import/export, self-service and official invitation routes exist. Contract and staging smoke coverage must expand. |
+| Security | 95% | Privileged registration is invitation-only, tokens are hashed/expiring/single-use, role assignment is server-controlled, and Super Admin authorization is enforced. Provider, header and penetration testing remain. |
+| Automated tests | 90% | Backend suite passes with 64 tests/405 assertions, including invitation security and citizen-only registration regression coverage; frontend type-check/build/lint pass. Staging credentials, load testing and complete authorization matrix remain. |
+| **Overall project** | **94%** | Official role onboarding was completed without enabling public privilege escalation; live operational, provider, advanced workflow and production verification gaps remain. |
 
 ## Verified implementation
 
@@ -71,7 +71,7 @@ The project is not honestly 100% production-ready yet. Remaining release work is
 
 | Verification | Result |
 |---|---|
-| `php artisan test` | **PASS** - 61 tests, 388 assertions. |
+| `php artisan test` | **PASS** - 64 tests, 405 assertions. |
 | `php artisan migrate:status` | **PASS** - all migrations recorded as `Ran` on Supabase. |
 | `php artisan migrate --force` | **PASS** - no pending migrations. |
 | `php artisan route:list` | **PASS** - Citizen, Family, Scheme, Grievance, Survey and Volunteer routes load. |
@@ -118,6 +118,52 @@ The project is not honestly 100% production-ready yet. Remaining release work is
 - Provider configuration cannot be proven by source inspection alone.
 - No claim is made that native mobile applications are complete.
 - Production CORS now restricts origins to `CORS_ALLOWED_ORIGINS`; this must be populated correctly on the host before deployment.
+
+## Official role login and registration phase (2026-08-05)
+
+### Completed
+
+- Preserved the single `/login` flow for Super Admin, MP, MLA, MP Staff, coordinators, volunteers, government officers and citizens, including existing role-based redirects.
+- Added an expiring, single-use invitation workflow for privileged official accounts. Only an authenticated Super Admin can issue invitations.
+- Added the protected Super Admin page at `/admin/users` to create an invitation and copy the one-time registration URL.
+- Added `/official-register?token=...` for invited officials to set a strong password and receive an authenticated session.
+- Kept public `/register` citizen-only; public users cannot select or create administrative roles.
+- Added server-side role allowlisting, unique-email checks, token hashing, three-day expiration, acceptance locking, secure password policy and inviter attribution.
+
+### Files changed
+
+- `mp-dashboard/app/Http/Controllers/Api/UserInvitationController.php`
+- `mp-dashboard/app/Http/Requests/Auth/CreateUserInvitationRequest.php`
+- `mp-dashboard/app/Http/Requests/Auth/CompleteUserInvitationRequest.php`
+- `mp-dashboard/app/Models/UserInvitation.php`
+- `mp-dashboard/database/migrations/2026_08_05_000001_create_user_invitations_table.php`
+- `mp-dashboard/routes/api.php`
+- `mp-dashboard/tests/Feature/Auth/UserInvitationWorkflowTest.php`
+- `mp-frontend/src/lib/api.ts`
+- `mp-frontend/src/routes/official-register.tsx`
+- `mp-frontend/src/routes/_app.admin.users.tsx`
+- `mp-frontend/src/components/layout/nav-config.ts`
+- `mp-frontend/src/routes/login.tsx`
+- `mp-frontend/src/routeTree.gen.ts` (generated route metadata)
+
+### Phase verification
+
+| Check | Result |
+|---|---|
+| `php artisan migrate --force` | **PASS** - invitation migration applied |
+| `php artisan migrate:status` | **PASS** - all migrations `Ran` |
+| `php artisan route:list --path=official-register` | **PASS** - GET metadata and POST completion routes load |
+| `php artisan test` | **PASS** - 64 tests, 405 assertions |
+| `npx.cmd tsc --noEmit --pretty false` | **PASS** |
+| `npm.cmd run build` | **PASS** |
+| `npm.cmd run lint` | **PASS** - no errors; 7 existing Fast Refresh warnings |
+| `php artisan optimize:clear` | **PASS** |
+
+### Remaining onboarding work
+
+- Invitation URLs are currently shown for secure manual delivery; connect a verified email/notification provider before automating delivery.
+- Add geography/department selectors to the invitation UI when official scope must be assigned during onboarding; the API already accepts those scoped IDs.
+- Replace temporary seeded credentials before production and complete authenticated staging smoke tests for every role.
 
 ## Phase 7 completion record
 

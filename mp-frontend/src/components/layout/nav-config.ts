@@ -168,7 +168,14 @@ export const navSections: NavSection[] = [
       { title: "Booth", url: "/analytics/booth" },
     ],
   },
-  { title: "Settings", url: "/settings", icon: Settings },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+    children: [
+      { title: "User Invitations", url: "/admin/users", roles: ["super-admin"] },
+    ],
+  },
   { title: "Profile", url: "/profile", icon: Settings },
   { title: "Preferences", url: "/preferences", icon: Settings },
 ];

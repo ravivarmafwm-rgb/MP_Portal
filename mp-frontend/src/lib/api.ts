@@ -254,6 +254,31 @@ export async function updateMyProfile(data: { name: string; email: string }) {
   return res.data as AuthUser;
 }
 
+export interface OfficialInvitation {
+  id?: string;
+  name: string;
+  email: string;
+  role: string;
+  role_slug: string;
+  expires_at: string;
+  registration_url?: string;
+}
+
+export async function fetchOfficialInvitation(token: string) {
+  const res = await api.get(`/official-register/${encodeURIComponent(token)}`);
+  return res.data as OfficialInvitation;
+}
+
+export async function completeOfficialInvitation(input: { token: string; password: string; password_confirmation: string }) {
+  const res = await api.post('/official-register', input);
+  return res.data as { user: AuthUser };
+}
+
+export async function createOfficialInvitation(input: { name: string; email: string; role_slug: string; constituency_id?: string; assembly_constituency_id?: string; mandal_id?: string; village_id?: string; ward_id?: string; department_id?: string }) {
+  const res = await api.post('/user-invitations', input);
+  return res.data as OfficialInvitation;
+}
+
 export async function fetchMyFamily() {
   const res = await api.get("/citizen/family");
   return res.data as FamilyRecord;

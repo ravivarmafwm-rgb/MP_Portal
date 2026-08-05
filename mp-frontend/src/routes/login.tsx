@@ -247,6 +247,10 @@ function LoginPage() {
               Sign up
             </Link>
           </div>
+          <p className="text-center text-xs text-muted-foreground">
+            Official roles (Super Admin, MP, MLA, MP Staff, coordinators and government officers)
+            are activated through a private invitation from a Super Admin.
+          </p>
         </div>
       </div>
     </div>

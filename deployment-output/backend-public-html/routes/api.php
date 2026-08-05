@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\CommunicationController;
 use App\Http\Controllers\Api\CommunicationWebhookController;
 use App\Http\Controllers\Api\VolunteerVisitController;
+use App\Http\Controllers\Api\UserInvitationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,6 +38,8 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:lo
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:registration');
 Route::get('/public/statistics', [PublicPortalController::class, 'statistics'])->middleware('throttle:60,1');
 Route::post('/volunteer-applications', [VolunteerApplicationController::class, 'store'])->middleware('throttle:registration');
+Route::get('/official-register/{token}', [UserInvitationController::class, 'show'])->middleware('throttle:registration');
+Route::post('/official-register', [UserInvitationController::class, 'complete'])->middleware('throttle:registration');
 Route::get('/public/locations/villages', [LocationController::class, 'villages'])->middleware('throttle:60,1');
 Route::get('/webhooks/communications/whatsapp', [CommunicationWebhookController::class, 'verifyWhatsApp'])->middleware('throttle:120,1');
 Route::post('/webhooks/communications/whatsapp', [CommunicationWebhookController::class, 'whatsapp'])->middleware('throttle:120,1');
@@ -47,6 +50,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Auth
     Route::post('/logout',          [AuthController::class, 'logout']);
+    Route::get('/user-invitations', [UserInvitationController::class, 'index'])->middleware('role:super-admin');
+    Route::post('/user-invitations', [UserInvitationController::class, 'store'])->middleware('role:super-admin');
     Route::get('/user',             [AuthController::class, 'me']);
     Route::put('/user/profile',     [AuthController::class, 'updateProfile']);
     Route::get('/user/preferences', [AuthController::class, 'preferences']);
